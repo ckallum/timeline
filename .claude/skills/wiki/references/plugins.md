@@ -52,23 +52,28 @@ These ship with Obsidian. Enable them in Settings > Core Plugins:
 | **Backlinks** | Outgoing/incoming links pane. |
 | **Outline** | Document heading navigation. |
 
-## Recommended Community Plugins
+## Pre-installed Community Plugins
 
-Install via Settings > Community Plugins > Turn off Restricted Mode > Browse.
+These ship with the vault in `.obsidian/plugins/`. Enable them in Settings > Community Plugins > Turn off Restricted Mode > toggle on. No download needed.
+
+| Plugin | Purpose |
+|--------|---------|
+| **Calendar** | Right-sidebar calendar with word count, task, and link indicators. |
+| **Thino** | Quick memo capture panel in right sidebar. |
+| **Banners** | Add `banner:` to any note frontmatter for header images. |
+| **Excalidraw** | Freehand drawing and image annotation. *(manifest + styles only; run setup script to download the 8MB main.js)* |
+
+## Recommended Community Plugins (install manually)
+
+Install via Settings > Community Plugins > Browse.
 
 | Plugin | Purpose |
 |--------|---------|
 | **Templater** | Auto-populate frontmatter on note creation from `_templates/`. |
 | **Obsidian Git** | Auto-commit every 15 minutes. Protects against bad writes. |
-| **Calendar** | Right-sidebar calendar with word count, task, and link indicators. Pre-installed in this vault via `.obsidian/plugins/calendar/`. |
-| **Thino** | Quick memo capture panel in right sidebar. Pre-installed via `.obsidian/plugins/thino/`. |
 | **Iconize** | Visual folder icons for navigation. |
 | **Minimal Theme** | Best dark theme for dense information display. |
-| **Dataview** *(optional/legacy)* | Only needed if you're on Obsidian < 1.9.10 or want to use the legacy `dashboard.md` queries. The primary dashboard now uses Bases. |
-
-**Calendar and Thino are pre-installed**. They ship with this vault. Enable them in Settings → Community Plugins → toggle on. No download needed.
-
-If installing in a different vault: download `main.js` + `manifest.json` from their GitHub releases into `.obsidian/plugins/calendar/` and `.obsidian/plugins/thino/` respectively.
+| **Dataview** *(optional/legacy)* | Only needed if you're on Obsidian < 1.9.10 or want the legacy `dashboard.md` queries. The primary dashboard uses Bases. |
 
 Optional additions:
 - **Smart Connections**: semantic search across all notes

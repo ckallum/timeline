@@ -25,6 +25,13 @@ timeline/node_modules/
 # Obsidian vault metadata
 .obsidian/*
 !.obsidian/snippets/
+!.obsidian/plugins/
+!.obsidian/app.json
+!.obsidian/appearance.json
+!.obsidian/graph.json
+.obsidian/plugins/*/data.json
+# Excalidraw main.js is 8MB — download via setup script if needed
+.obsidian/plugins/obsidian-excalidraw-plugin/main.js
 
 # standard noise
 .DS_Store

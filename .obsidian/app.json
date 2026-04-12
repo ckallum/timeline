@@ -1,0 +1,12 @@
+{
+  "userIgnoreFilters": [
+    ".claude/",
+    "_templates/",
+    "scripts/",
+    "README.md",
+    "CLAUDE.md",
+    "package.json",
+    "package-lock.json",
+    "node_modules/"
+  ]
+}
