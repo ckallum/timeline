@@ -1,41 +1,30 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-
-export interface DayEntry {
-  date: string;
-  title: string;
-  summary: string;
-  counts: Record<string, number>;
-  dominant_category: string;
-  body_md: string;
-  obsidian_uri: string;
-}
-
-interface TimelineData {
-  generated_at: string;
-  days: DayEntry[];
-}
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { DayEntry } from '../types';
+import { getYear } from '../lib/format';
 
 const PAGE_SIZE = 10;
 
 export function useTimelineData() {
   const [allDays, setAllDays] = useState<DayEntry[]>([]);
-  const [visibleDays, setVisibleDays] = useState<DayEntry[]>([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const pageRef = useRef(1);
+  const [scrollTarget, setScrollTarget] = useState<number | null>(null);
 
   useEffect(() => {
     fetch('./data/timeline.json')
       .then(res => {
-        if (!res.ok) throw new Error(`Failed to load timeline data: ${res.status}`);
-        return res.json() as Promise<TimelineData>;
+        if (!res.ok) {
+          if (res.status === 404) throw new Error('Timeline data not found. Run `npm run build:data` first.');
+          throw new Error(`Failed to load timeline data: ${res.status}`);
+        }
+        return res.json();
       })
       .then(data => {
+        if (!data || !Array.isArray(data.days)) {
+          throw new Error('Invalid timeline data: missing days array');
+        }
         setAllDays(data.days);
-        const initial = data.days.slice(0, PAGE_SIZE);
-        setVisibleDays(initial);
-        setHasMore(data.days.length > PAGE_SIZE);
         setLoading(false);
       })
       .catch(err => {
@@ -44,30 +33,25 @@ export function useTimelineData() {
       });
   }, []);
 
+  const visibleDays = useMemo(() => allDays.slice(0, page * PAGE_SIZE), [allDays, page]);
+  const hasMore = visibleDays.length < allDays.length;
+
   const loadMore = useCallback(() => {
-    const nextPage = pageRef.current + 1;
-    const end = nextPage * PAGE_SIZE;
-    setVisibleDays(allDays.slice(0, end));
-    setHasMore(end < allDays.length);
-    pageRef.current = nextPage;
-  }, [allDays]);
+    setPage(p => p + 1);
+  }, []);
 
   const jumpToYear = useCallback((year: number) => {
-    const idx = allDays.findIndex(d => new Date(d.date).getFullYear() <= year);
+    const idx = allDays.findIndex(d => getYear(d.date) <= year);
     if (idx === -1) return;
-    const end = Math.max(idx + PAGE_SIZE, visibleDays.length);
-    setVisibleDays(allDays.slice(0, end));
-    setHasMore(end < allDays.length);
-    pageRef.current = Math.ceil(end / PAGE_SIZE);
+    const needed = Math.ceil((idx + PAGE_SIZE) / PAGE_SIZE);
+    setPage(p => Math.max(p, needed));
+    setScrollTarget(year);
+  }, [allDays]);
 
-    // Scroll to the year after state update
-    setTimeout(() => {
-      const el = document.querySelector(`[data-year="${year}"]`);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
-  }, [allDays, visibleDays.length]);
+  const years = useMemo(
+    () => [...new Set(allDays.map(d => getYear(d.date)))].sort((a, b) => b - a),
+    [allDays],
+  );
 
-  const years = [...new Set(allDays.map(d => new Date(d.date).getFullYear()))].sort((a, b) => b - a);
-
-  return { visibleDays, loading, error, hasMore, loadMore, jumpToYear, years };
+  return { visibleDays, loading, error, hasMore, loadMore, jumpToYear, years, scrollTarget, clearScrollTarget: () => setScrollTarget(null) };
 }

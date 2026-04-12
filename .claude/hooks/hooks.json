@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -d .git ] && git add wiki/ .raw/ journal/ inbox/ reminders/ _attachments/ 2>/dev/null && (git diff --cached --quiet || git commit -m \"wiki: auto-commit $(date '+%Y-%m-%d %H:%M')\" 2>/dev/null) || true"
+            "command": "[ -d .git ] && git add 'wiki/**/*.md' 'wiki/**/*.canvas' 'wiki/**/*.base' '.raw/' 'journal/**/*.md' 'inbox/**/*.md' 'reminders/**/*.md' '_attachments/' 2>/dev/null && (git diff --cached --quiet || git commit -m \"wiki: auto-commit $(date '+%Y-%m-%d %H:%M')\" 2>/dev/null) || true"
           }
         ]
       }

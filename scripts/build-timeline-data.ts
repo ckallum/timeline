@@ -12,9 +12,11 @@
  * Image resolution: ![[photo.jpg]] → ![photo](../../_attachments/photo.jpg)
  */
 
-import { readFileSync, writeFileSync, statSync, existsSync, mkdirSync, readdirSync } from 'fs';
+import { readFile, writeFile, stat, mkdir, readdir } from 'fs/promises';
+import { existsSync, readdirSync, statSync } from 'fs';
 import { join, relative, basename, extname } from 'path';
 import matter from 'gray-matter';
+import type { DayEntry, TimelineData, Category, CountKey } from '../timeline/src/types';
 
 const VAULT_ROOT = join(import.meta.dirname, '..');
 const JOURNAL_DIR = join(VAULT_ROOT, 'journal');
@@ -22,23 +24,7 @@ const OUTPUT_DIR = join(VAULT_ROOT, 'timeline', 'data');
 const OUTPUT_FILE = join(OUTPUT_DIR, 'timeline.json');
 const VAULT_NAME = 'timeline';
 
-interface DayEntry {
-  date: string;
-  title: string;
-  summary: string;
-  counts: Record<string, number>;
-  dominant_category: string;
-  body_md: string;
-  obsidian_uri: string;
-}
-
-interface TimelineData {
-  generated_at: string;
-  days: DayEntry[];
-}
-
-// Category mapping for dominant_category computation
-const CATEGORY_MAP: Record<string, string> = {
+const CATEGORY_MAP: Record<CountKey, Category> = {
   journal_entries: 'journal',
   quicknotes: 'capture',
   ingests: 'ingest',
@@ -51,30 +37,32 @@ const CATEGORY_MAP: Record<string, string> = {
   voice_memos: 'media',
 };
 
-function walkDir(dir: string): string[] {
-  const files: string[] = [];
-  if (!existsSync(dir)) return files;
+function walkDir(dir: string, out: string[] = []): string[] {
+  if (!existsSync(dir)) return out;
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...walkDir(full));
+      walkDir(full, out);
     } else if (entry.name.endsWith('.md') && !entry.name.startsWith('_')) {
-      files.push(full);
+      out.push(full);
     }
   }
-  return files;
+  return out;
 }
 
-function shouldRebuild(journalFiles: string[]): boolean {
-  if (!existsSync(OUTPUT_FILE)) return true;
-
-  const outputMtime = statSync(OUTPUT_FILE).mtimeMs;
-  return journalFiles.some(f => statSync(f).mtimeMs > outputMtime);
+async function shouldRebuild(journalFiles: string[]): Promise<boolean> {
+  try {
+    const outputStat = await stat(OUTPUT_FILE);
+    const outputMtime = outputStat.mtimeMs;
+    const stats = await Promise.all(journalFiles.map(f => stat(f).then(s => s.mtimeMs)));
+    return stats.some(mtime => mtime > outputMtime);
+  } catch {
+    return true; // output file doesn't exist
+  }
 }
 
 function resolveWikilinks(body: string): string {
-  // [[Page Title]] → [Page Title](obsidian://open?vault=timeline&file=Page%20Title)
   return body.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target: string, alias?: string) => {
     const display = alias || target;
     const encoded = encodeURIComponent(target);
@@ -83,96 +71,98 @@ function resolveWikilinks(body: string): string {
 }
 
 function resolveImages(body: string): string {
-  // ![[photo.jpg]] → ![photo](../../_attachments/photo.jpg)
   const relToVault = relative(join(VAULT_ROOT, 'timeline', 'dist'), VAULT_ROOT);
   return body.replace(/!\[\[([^\]]+)\]\]/g, (_match, filename: string) => {
-    const sanitized = basename(filename); // strip directory traversal
+    const sanitized = basename(filename);
     const name = basename(sanitized, extname(sanitized));
     return `![${name}](${relToVault}/_attachments/${sanitized})`;
   });
 }
 
-function computeDominantCategory(counts: Record<string, number>): string {
+function computeDominantCategory(counts: Partial<Record<CountKey, number>>): Category {
   let maxCount = 0;
-  let dominant = 'journal';
+  let dominant: Category = 'journal';
 
-  const categoryTotals: Record<string, number> = {};
+  const categoryTotals: Partial<Record<Category, number>> = {};
   for (const [key, value] of Object.entries(counts)) {
     if (typeof value !== 'number') continue;
-    const category = CATEGORY_MAP[key] || 'other';
+    const category = CATEGORY_MAP[key as CountKey] || 'other';
     categoryTotals[category] = (categoryTotals[category] || 0) + value;
   }
 
   for (const [category, total] of Object.entries(categoryTotals)) {
-    if (total > maxCount) {
-      maxCount = total;
-      dominant = category;
+    if (total! > maxCount) {
+      maxCount = total!;
+      dominant = category as Category;
     }
   }
 
   return dominant;
 }
 
-function main() {
+async function processFile(filePath: string): Promise<DayEntry | null> {
+  const raw = await readFile(filePath, 'utf-8');
+  const { data: fm, content } = matter(raw);
+
+  if (fm.type !== 'day') return null;
+
+  const counts = fm.counts || {};
+  const totalActivity = Object.values(counts).reduce(
+    (sum: number, v) => sum + (typeof v === 'number' ? v : 0), 0
+  );
+
+  if (totalActivity === 0) return null;
+
+  const relPath = relative(VAULT_ROOT, filePath);
+  let body = content;
+  body = resolveWikilinks(body);
+  body = resolveImages(body);
+
+  const dateStr = fm.date instanceof Date
+    ? fm.date.toISOString().slice(0, 10)
+    : String(fm.date || basename(filePath, '.md'));
+
+  return {
+    date: dateStr,
+    title: String(fm.title || basename(filePath, '.md')),
+    summary: fm.summary_one_liner || '',
+    counts,
+    dominant_category: computeDominantCategory(counts),
+    body_md: body.trim(),
+    obsidian_uri: `obsidian://open?vault=${VAULT_NAME}&file=${encodeURIComponent(relPath)}`,
+  };
+}
+
+async function main() {
   const journalFiles = walkDir(JOURNAL_DIR);
 
   if (journalFiles.length === 0) {
     console.log('No journal files found. Writing empty timeline.');
-    if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true });
+    await mkdir(OUTPUT_DIR, { recursive: true });
     const empty: TimelineData = { generated_at: new Date().toISOString(), days: [] };
-    writeFileSync(OUTPUT_FILE, JSON.stringify(empty, null, 2));
+    await writeFile(OUTPUT_FILE, JSON.stringify(empty, null, 2));
     return;
   }
 
-  // Mtime check (decision 14)
-  if (!shouldRebuild(journalFiles)) {
+  if (!(await shouldRebuild(journalFiles))) {
     console.log('No journal files changed since last build. Skipping.');
     return;
   }
 
   console.log(`Processing ${journalFiles.length} journal files...`);
 
+  const results = await Promise.allSettled(journalFiles.map(f =>
+    processFile(f).then(entry => ({ file: f, entry }))
+  ));
+
   const days: DayEntry[] = [];
   const errors: Array<{ file: string; error: string }> = [];
 
-  for (const filePath of journalFiles) {
-    try {
-      const raw = readFileSync(filePath, 'utf-8');
-      const { data: fm, content } = matter(raw);
-
-      if (fm.type !== 'day') continue;
-
-      const counts = fm.counts || {};
-      const totalActivity = Object.values(counts).reduce(
-        (sum: number, v) => sum + (typeof v === 'number' ? v : 0), 0
-      );
-
-      // Skip days with zero activity
-      if (totalActivity === 0) continue;
-
-      const relPath = relative(VAULT_ROOT, filePath);
-      let body = content;
-      body = resolveWikilinks(body);
-      body = resolveImages(body);
-
-      // gray-matter parses YAML dates as Date objects; normalize to string
-      const dateStr = fm.date instanceof Date
-        ? fm.date.toISOString().slice(0, 10)
-        : String(fm.date || basename(filePath, '.md'));
-
-      days.push({
-        date: dateStr,
-        title: String(fm.title || basename(filePath, '.md')),
-        summary: fm.summary_one_liner || '',
-        counts,
-        dominant_category: computeDominantCategory(counts),
-        body_md: body.trim(),
-        obsidian_uri: `obsidian://open?vault=${VAULT_NAME}&file=${encodeURIComponent(relPath)}`,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`Error processing ${filePath}: ${msg}`);
-      errors.push({ file: relative(VAULT_ROOT, filePath), error: msg });
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      errors.push({ file: 'unknown', error: String(result.reason) });
+    } else if (result.value.entry) {
+      days.push(result.value.entry);
     }
   }
 
@@ -181,10 +171,9 @@ function main() {
     errors.forEach(e => console.warn(`  - ${e.file}: ${e.error}`));
   }
 
-  // Sort by date descending (newest first)
   days.sort((a, b) => b.date.localeCompare(a.date));
 
-  if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true });
+  await mkdir(OUTPUT_DIR, { recursive: true });
 
   const output = {
     generated_at: new Date().toISOString(),
@@ -192,8 +181,11 @@ function main() {
     ...(errors.length > 0 ? { errors } : {}),
   };
 
-  writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
+  await writeFile(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`Built timeline.json: ${days.length} active days.${errors.length > 0 ? ` (${errors.length} errors)` : ''}`);
 }
 
-main();
+main().catch(err => {
+  console.error('Build failed:', err instanceof Error ? err.message : err);
+  process.exit(1);
+});

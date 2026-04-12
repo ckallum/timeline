@@ -1,7 +1,7 @@
 import Markdown from 'react-markdown';
 import { getCategoryColors, getCategoryLabel } from '../lib/colors';
 import { formatDate, formatCounts } from '../lib/format';
-import type { DayEntry } from '../hooks/useTimelineData';
+import type { DayEntry } from '../types';
 
 interface DetailPanelProps {
   day: DayEntry | null;
@@ -16,7 +16,6 @@ export default function DetailPanel({ day, onClose }: DetailPanelProps) {
 
   return (
     <div className="detail-panel w-[70%] p-8 pt-6">
-      {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-100 mb-1">{formatDate(day.date)}</h1>
@@ -41,7 +40,6 @@ export default function DetailPanel({ day, onClose }: DetailPanelProps) {
         </button>
       </div>
 
-      {/* Stats bar */}
       <div className="flex flex-wrap gap-3 mb-6 pb-4 border-b border-zinc-800">
         {countLines.map((line, i) => (
           <span key={i} className="text-xs text-zinc-400 bg-zinc-900 px-2 py-1 rounded">{line}</span>
@@ -55,7 +53,6 @@ export default function DetailPanel({ day, onClose }: DetailPanelProps) {
         </a>
       </div>
 
-      {/* Markdown body */}
       <article className="prose prose-invert prose-sm max-w-none prose-headings:text-zinc-200 prose-headings:font-medium prose-p:text-zinc-300 prose-a:text-sky-400 prose-strong:text-zinc-200 prose-ul:text-zinc-400 prose-li:text-zinc-400 prose-code:text-amber-300 prose-code:bg-zinc-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-hr:border-zinc-800">
         <Markdown>{day.body_md}</Markdown>
       </article>
