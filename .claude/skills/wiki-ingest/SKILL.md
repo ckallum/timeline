@@ -123,6 +123,26 @@ Steps:
 
 ---
 
+## Domain Assignment
+
+When creating any new wiki page (source, concept, entity, question), set `domain: <slug>` in the frontmatter. Pick the most relevant domain from the starter list:
+
+- `personal-health` — fitness, mood, food, wellness
+- `relationships` — family, friends, social
+- `creative` — writing, music, photography, art
+- `code` — programming, projects, engineering
+- `reading` — books, articles, essays, papers
+- `recipes` — food, cooking, restaurants
+- `finance` — money, bills, subscriptions, investments
+- `places` — travel, locations, geography
+- `epistemics` — rationality, decision-making, philosophy
+
+Analyze the page content and pick the single most relevant domain. If the content spans multiple domains, pick the primary one. If nothing fits, leave `domain: ""` for the user to assign later.
+
+This field is used by wiki-lint to count pages per domain and by the domain index pages.
+
+---
+
 ## Batch Ingest
 
 Trigger: user drops multiple files or says "ingest all of these."
