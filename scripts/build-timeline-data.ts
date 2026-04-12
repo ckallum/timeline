@@ -82,12 +82,13 @@ function resolveWikilinks(body: string): string {
   });
 }
 
-function resolveImages(body: string, filePath: string): string {
+function resolveImages(body: string): string {
   // ![[photo.jpg]] → ![photo](../../_attachments/photo.jpg)
   const relToVault = relative(join(VAULT_ROOT, 'timeline', 'dist'), VAULT_ROOT);
   return body.replace(/!\[\[([^\]]+)\]\]/g, (_match, filename: string) => {
-    const name = basename(filename, extname(filename));
-    return `![${name}](${relToVault}/_attachments/${filename})`;
+    const sanitized = basename(filename); // strip directory traversal
+    const name = basename(sanitized, extname(sanitized));
+    return `![${name}](${relToVault}/_attachments/${sanitized})`;
   });
 }
 
@@ -132,6 +133,7 @@ function main() {
   console.log(`Processing ${journalFiles.length} journal files...`);
 
   const days: DayEntry[] = [];
+  const errors: Array<{ file: string; error: string }> = [];
 
   for (const filePath of journalFiles) {
     try {
@@ -151,7 +153,7 @@ function main() {
       const relPath = relative(VAULT_ROOT, filePath);
       let body = content;
       body = resolveWikilinks(body);
-      body = resolveImages(body, filePath);
+      body = resolveImages(body);
 
       // gray-matter parses YAML dates as Date objects; normalize to string
       const dateStr = fm.date instanceof Date
@@ -168,8 +170,15 @@ function main() {
         obsidian_uri: `obsidian://open?vault=${VAULT_NAME}&file=${encodeURIComponent(relPath)}`,
       });
     } catch (err) {
-      console.error(`Error processing ${filePath}:`, err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Error processing ${filePath}: ${msg}`);
+      errors.push({ file: relative(VAULT_ROOT, filePath), error: msg });
     }
+  }
+
+  if (errors.length > 0) {
+    console.warn(`\nWARNING: ${errors.length} file(s) failed to process:`);
+    errors.forEach(e => console.warn(`  - ${e.file}: ${e.error}`));
   }
 
   // Sort by date descending (newest first)
@@ -177,13 +186,14 @@ function main() {
 
   if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true });
 
-  const timeline: TimelineData = {
+  const output = {
     generated_at: new Date().toISOString(),
     days,
+    ...(errors.length > 0 ? { errors } : {}),
   };
 
-  writeFileSync(OUTPUT_FILE, JSON.stringify(timeline, null, 2));
-  console.log(`Built timeline.json: ${days.length} active days.`);
+  writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
+  console.log(`Built timeline.json: ${days.length} active days.${errors.length > 0 ? ` (${errors.length} errors)` : ''}`);
 }
 
 main();

@@ -39,7 +39,7 @@ export function useTimelineData() {
         setLoading(false);
       })
       .catch(err => {
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
         setLoading(false);
       });
   }, []);
