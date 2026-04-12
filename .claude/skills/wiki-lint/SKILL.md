@@ -157,6 +157,30 @@ Add one node per domain page. Connect domains that have significant cross-refere
 
 ---
 
+## Domain Audit
+
+In addition to the standard lint checks, scan for domain coverage:
+
+1. **Count pages per domain**: read `domain:` frontmatter field across all wiki pages (`wiki/concepts/`, `wiki/entities/`, `wiki/sources/`, `wiki/questions/`).
+2. **Update each domain page's `page_count`**: for each domain in `wiki/domains/`, set `page_count` to the number of pages with that domain slug.
+3. **List pages under each domain**: under `## Pages` in each domain page, list all pages with that domain as wikilinks.
+4. **Report orphan domains**: domains with `page_count: 0` after the scan.
+5. **Report undomained pages**: pages with `domain: ""` or no `domain:` field at all.
+
+Include the domain breakdown in the lint report:
+
+```
+## Domains
+- code: 12 pages
+- reading: 8 pages
+- epistemics: 5 pages
+- personal-health: 3 pages
+- ...
+- Undomained: 4 pages
+```
+
+---
+
 ## Before Auto-Fixing
 
 Always show the lint report first. Ask: "Should I fix these automatically, or do you want to review each one?"
