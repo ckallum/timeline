@@ -8,11 +8,11 @@ wiki/**/*
 !wiki/README.md
 !.raw/README.md
 
-# fully ignore personal capture folders
-journal/
-inbox/
-reminders/
-_attachments/
+# fully ignore personal capture folders (root-anchored)
+/journal/
+/inbox/
+/reminders/
+/_attachments/
 
 # build outputs
 timeline/data/
