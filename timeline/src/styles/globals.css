@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --spine-width: 2px;
+    --dot-size: 14px;
+    --dot-size-lg: 18px;
+    --transition-speed: 300ms;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(63 63 70);
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .timeline-spine {
+    @apply absolute left-1/2 top-0 bottom-0 w-[2px] bg-zinc-800 -translate-x-1/2;
+  }
+
+  .timeline-spine-collapsed {
+    @apply absolute right-[15%] top-0 bottom-0 w-[2px] bg-zinc-800;
+  }
+
+  .day-card {
+    @apply relative bg-zinc-900 border border-zinc-800 rounded-lg p-4 max-w-md
+           transition-all duration-300 ease-out hover:border-zinc-600 hover:bg-zinc-900/80
+           cursor-pointer;
+  }
+
+  .detail-panel {
+    @apply fixed top-0 left-0 h-full overflow-y-auto bg-zinc-950 border-r border-zinc-800
+           transition-all duration-300 ease-out;
+  }
+
+  .gap-marker {
+    @apply text-zinc-600 text-sm italic text-center py-4;
+  }
+}
