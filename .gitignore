@@ -1,0 +1,32 @@
+# ignore everything inside wiki/ and .raw/ …
+wiki/*
+.raw/*
+wiki/**/*
+.raw/**/*
+
+# …except the top-level READMEs that document the folders
+!wiki/README.md
+!.raw/README.md
+
+# fully ignore personal capture folders
+journal/
+inbox/
+reminders/
+_attachments/
+
+# build outputs
+timeline/data/
+timeline/dist/
+timeline/node_modules/
+
+# local config with potential secrets
+.claude/autoingest.config.json
+
+# Obsidian vault metadata
+.obsidian/*
+!.obsidian/snippets/
+
+# standard noise
+.DS_Store
+*.log
+node_modules/
