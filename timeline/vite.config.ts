@@ -10,9 +10,14 @@ export default defineConfig({
     copyPublicDir: true,
   },
   server: {
-    // Serve data/ as static files in dev mode
+    port: 5173,
+    strictPort: true,
     fs: {
       allow: ['.'],
     },
+  },
+  preview: {
+    port: 4173,
+    strictPort: true,
   },
 })
