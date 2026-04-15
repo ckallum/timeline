@@ -264,7 +264,7 @@ Clean up temp directory:
 rm -rf "$CONVERSE_TMPDIR"
 ```
 
-**Then STOP.** Do not proceed to Step 7/8 — the converse report replaces the normal summary.
+**Then STOP.** Do not proceed to Step 7 — the converse report replaces the normal summary.
 
 ---
 
@@ -638,7 +638,7 @@ Review complete: BLOCKED | N critical issues need resolution
 
 ## Gotchas
 
-- **REMOTE_SLUG uses `tr '/' '__'`** to preserve the owner in the path (e.g., `owner__repo`). Don't use just the repo name.
+- **REMOTE_SLUG uses `sed 's|/|__|g'`** to preserve the owner in the path (e.g., `owner__repo`). `tr` can only map to a single character, so don't use `tr '/' '__'` — that produces `owner_repo`. Don't use just the repo name either.
 - **Greptile auto-detect is repo-scoped, not wildcard.** The history file path includes the full `REMOTE_SLUG`, so it only activates for repos that have been triaged before.
 - **The review stamp hashes `git diff --cached`** (staged changes only). If you stage/unstage files after the stamp, the review gate will see a mismatch. Stage everything before running `/review`.
 - **If the checklist file is missing**, the skill stops early. Run `/configure-claude` to install it.

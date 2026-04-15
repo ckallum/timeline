@@ -49,9 +49,11 @@ export function useTimelineData() {
   }, [allDays]);
 
   const years = useMemo(
-    () => [...new Set(allDays.map(d => getYear(d.date)))].sort((a, b) => b - a),
+    () => [...new Set(allDays.map(d => getYear(d.date)).filter(y => y > 0))].sort((a, b) => b - a),
     [allDays],
   );
 
-  return { visibleDays, loading, error, hasMore, loadMore, jumpToYear, years, scrollTarget, clearScrollTarget: () => setScrollTarget(null) };
+  const clearScrollTarget = useCallback(() => setScrollTarget(null), []);
+
+  return { visibleDays, loading, error, hasMore, loadMore, jumpToYear, years, scrollTarget, clearScrollTarget };
 }
