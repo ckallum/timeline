@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { getCategoryColors } from '../lib/colors';
 import { formatDate, formatCounts } from '../lib/format';
-import type { DayEntry } from '../hooks/useTimelineData';
+import type { DayEntry } from '../types';
 
 interface DayNodeProps {
   day: DayEntry;
@@ -9,6 +9,21 @@ interface DayNodeProps {
   collapsed: boolean;
   onSelect: (day: DayEntry) => void;
   isSelected: boolean;
+}
+
+function DaySummary({ day, countLines }: { day: DayEntry; countLines: string[] }) {
+  return (
+    <>
+      {day.summary && (
+        <p className="text-sm text-zinc-300 leading-relaxed mb-2">{day.summary}</p>
+      )}
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        {countLines.map((line, i) => (
+          <span key={i} className="text-xs text-zinc-500">{line}</span>
+        ))}
+      </div>
+    </>
+  );
 }
 
 export default function DayNode({ day, side, collapsed, onSelect, isSelected }: DayNodeProps) {
@@ -40,9 +55,7 @@ export default function DayNode({ day, side, collapsed, onSelect, isSelected }: 
   return (
     <div
       className={`relative flex items-center gap-6 py-4 ${side === 'left' ? 'flex-row-reverse' : 'flex-row'}`}
-      data-year={new Date(day.date).getFullYear()}
     >
-      {/* Card */}
       <div
         className={`day-card flex-1 max-w-[calc(50%-2rem)] ${colors.border} ${colors.bg} ${side === 'left' ? 'ml-auto mr-8' : 'mr-auto ml-8'}`}
         onClick={() => onSelect(day)}
@@ -53,17 +66,9 @@ export default function DayNode({ day, side, collapsed, onSelect, isSelected }: 
           <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
           <span className="text-xs text-zinc-500 tabular-nums">{formatDate(day.date)}</span>
         </div>
-        {day.summary && (
-          <p className="text-sm text-zinc-300 leading-relaxed mb-2">{day.summary}</p>
-        )}
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-          {countLines.map((line, i) => (
-            <span key={i} className="text-xs text-zinc-500">{line}</span>
-          ))}
-        </div>
+        <DaySummary day={day} countLines={countLines} />
       </div>
 
-      {/* Dot on spine */}
       <div className="absolute left-1/2 -translate-x-1/2 z-10">
         <button
           onClick={() => onSelect(day)}
@@ -71,16 +76,10 @@ export default function DayNode({ day, side, collapsed, onSelect, isSelected }: 
         />
       </div>
 
-      {/* Tooltip */}
       {showTooltip && (
         <div className={`absolute z-40 w-72 bg-zinc-900 border border-zinc-700 rounded-lg p-3 shadow-xl ${side === 'left' ? 'right-[calc(50%+1.5rem)]' : 'left-[calc(50%+1.5rem)]'} top-1/2 -translate-y-1/2`}>
           <p className="text-sm font-medium text-zinc-200 mb-1">{formatDate(day.date)}</p>
-          {day.summary && <p className="text-xs text-zinc-400 mb-2">{day.summary}</p>}
-          <ul className="space-y-0.5">
-            {countLines.map((line, i) => (
-              <li key={i} className="text-xs text-zinc-500">{line}</li>
-            ))}
-          </ul>
+          <DaySummary day={day} countLines={countLines} />
         </div>
       )}
     </div>

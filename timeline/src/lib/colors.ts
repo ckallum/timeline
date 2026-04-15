@@ -1,6 +1,8 @@
-/** Category → Tailwind color mapping for day node dots and cards */
+import type { Category } from '../types';
 
-const CATEGORY_COLORS: Record<string, { dot: string; border: string; bg: string; text: string }> = {
+type ColorSet = { dot: string; border: string; bg: string; text: string };
+
+const CATEGORY_COLORS: Record<Category, ColorSet> = {
   journal:  { dot: 'bg-amber-400',   border: 'border-amber-400/30',  bg: 'bg-amber-400/5',  text: 'text-amber-400' },
   capture:  { dot: 'bg-orange-400',  border: 'border-orange-400/30', bg: 'bg-orange-400/5', text: 'text-orange-400' },
   ingest:   { dot: 'bg-sky-400',     border: 'border-sky-400/30',    bg: 'bg-sky-400/5',    text: 'text-sky-400' },
@@ -11,20 +13,21 @@ const CATEGORY_COLORS: Record<string, { dot: string; border: string; bg: string;
   other:    { dot: 'bg-zinc-400',    border: 'border-zinc-400/30',   bg: 'bg-zinc-400/5',   text: 'text-zinc-400' },
 };
 
-export function getCategoryColors(category: string) {
-  return CATEGORY_COLORS[category] || CATEGORY_COLORS.other;
+export function getCategoryColors(category: Category): ColorSet {
+  return CATEGORY_COLORS[category] ?? CATEGORY_COLORS.other;
 }
 
-export function getCategoryLabel(category: string): string {
-  const labels: Record<string, string> = {
-    journal: 'Journal',
-    capture: 'Captures',
-    ingest: 'Ingests',
-    reminder: 'Reminders',
-    code: 'Code',
-    wiki: 'Wiki',
-    media: 'Media',
-    other: 'Activity',
-  };
-  return labels[category] || 'Activity';
+const CATEGORY_LABELS: Record<Category, string> = {
+  journal: 'Journal',
+  capture: 'Captures',
+  ingest: 'Ingests',
+  reminder: 'Reminders',
+  code: 'Code',
+  wiki: 'Wiki',
+  media: 'Media',
+  other: 'Activity',
+};
+
+export function getCategoryLabel(category: Category): string {
+  return CATEGORY_LABELS[category] ?? CATEGORY_LABELS.other;
 }
