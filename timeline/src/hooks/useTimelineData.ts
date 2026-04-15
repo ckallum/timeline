@@ -43,7 +43,7 @@ export function useTimelineData() {
   const jumpToYear = useCallback((year: number) => {
     const idx = allDays.findIndex(d => getYear(d.date) <= year);
     if (idx === -1) return;
-    const needed = Math.ceil((idx + PAGE_SIZE) / PAGE_SIZE);
+    const needed = Math.ceil((idx + 1) / PAGE_SIZE);
     setPage(p => Math.max(p, needed));
     setScrollTarget(year);
   }, [allDays]);

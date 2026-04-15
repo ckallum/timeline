@@ -12,8 +12,8 @@
  * Image resolution: ![[photo.jpg]] → ![photo](../../_attachments/photo.jpg)
  */
 
-import { readFile, writeFile, stat, mkdir, readdir } from 'fs/promises';
-import { existsSync, readdirSync, statSync } from 'fs';
+import { readFile, writeFile, stat, mkdir } from 'fs/promises';
+import { existsSync, readdirSync } from 'fs';
 import { join, relative, basename, extname } from 'path';
 import matter from 'gray-matter';
 import type { DayEntry, TimelineData, Category, CountKey } from '../timeline/src/types';
@@ -22,6 +22,7 @@ const VAULT_ROOT = join(import.meta.dirname, '..');
 const JOURNAL_DIR = join(VAULT_ROOT, 'journal');
 const OUTPUT_DIR = join(VAULT_ROOT, 'timeline', 'data');
 const OUTPUT_FILE = join(OUTPUT_DIR, 'timeline.json');
+const MANIFEST_FILE = join(OUTPUT_DIR, 'timeline.manifest.json');
 const VAULT_NAME = 'timeline';
 
 const CATEGORY_MAP: Record<CountKey, Category> = {
@@ -55,10 +56,20 @@ async function shouldRebuild(journalFiles: string[]): Promise<boolean> {
   try {
     const outputStat = await stat(OUTPUT_FILE);
     const outputMtime = outputStat.mtimeMs;
+
+    // Compare current file set against persisted manifest to catch deletions.
+    const manifestRaw = await readFile(MANIFEST_FILE, 'utf-8').catch(() => null);
+    if (!manifestRaw) return true;
+    const manifest = JSON.parse(manifestRaw) as { files: string[] };
+    const current = new Set(journalFiles);
+    const previous = new Set(manifest.files);
+    if (current.size !== previous.size) return true;
+    for (const f of current) if (!previous.has(f)) return true;
+
     const stats = await Promise.all(journalFiles.map(f => stat(f).then(s => s.mtimeMs)));
     return stats.some(mtime => mtime > outputMtime);
   } catch {
-    return true; // output file doesn't exist
+    return true;
   }
 }
 
@@ -151,18 +162,29 @@ async function main() {
 
   console.log(`Processing ${journalFiles.length} journal files...`);
 
-  const results = await Promise.allSettled(journalFiles.map(f =>
-    processFile(f).then(entry => ({ file: f, entry }))
-  ));
+  const results = await Promise.allSettled(journalFiles.map(async f => {
+    try {
+      const entry = await processFile(f);
+      return { file: f, entry, error: null as string | null };
+    } catch (err) {
+      return { file: f, entry: null, error: err instanceof Error ? err.message : String(err) };
+    }
+  }));
 
   const days: DayEntry[] = [];
   const errors: Array<{ file: string; error: string }> = [];
 
   for (const result of results) {
+    // Inner try/catch resolves all paths; rejection only on unexpected failure.
     if (result.status === 'rejected') {
       errors.push({ file: 'unknown', error: String(result.reason) });
-    } else if (result.value.entry) {
-      days.push(result.value.entry);
+      continue;
+    }
+    const { file, entry, error } = result.value;
+    if (error) {
+      errors.push({ file: relative(VAULT_ROOT, file), error });
+    } else if (entry) {
+      days.push(entry);
     }
   }
 
@@ -182,6 +204,7 @@ async function main() {
   };
 
   await writeFile(OUTPUT_FILE, JSON.stringify(output, null, 2));
+  await writeFile(MANIFEST_FILE, JSON.stringify({ files: journalFiles }, null, 2));
   console.log(`Built timeline.json: ${days.length} active days.${errors.length > 0 ? ` (${errors.length} errors)` : ''}`);
 }
 

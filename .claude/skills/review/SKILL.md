@@ -71,13 +71,13 @@ command -v "$ADVERSARY_CLI" >/dev/null 2>&1 || {
   exit 1
 }
 
-# Build model flag
-MODEL_FLAG=""
+# Build model flag as an array to avoid word-splitting / injection.
+MODEL_FLAG=()
 if [ -n "$ADVERSARY_MODEL" ]; then
   case "$ADVERSARY_CLI" in
-    codex)  MODEL_FLAG="-m $ADVERSARY_MODEL" ;;
-    gemini) MODEL_FLAG="-m $ADVERSARY_MODEL" ;;
-    claude) MODEL_FLAG="--model $ADVERSARY_MODEL" ;;
+    codex)  MODEL_FLAG=(-m "$ADVERSARY_MODEL") ;;
+    gemini) MODEL_FLAG=(-m "$ADVERSARY_MODEL") ;;
+    claude) MODEL_FLAG=(--model "$ADVERSARY_MODEL") ;;
   esac
 fi
 ```
@@ -91,9 +91,9 @@ Use the appropriate invocation per CLI. All three execution phases use this patt
 run_adversary() {
   local outfile="$1"
   case "$ADVERSARY_CLI" in
-    codex)  codex exec $MODEL_FLAG -o "$outfile" - ;;
-    gemini) gemini $MODEL_FLAG -p "$(cat -)" > "$outfile" ;;
-    claude) claude $MODEL_FLAG --print "$(cat -)" > "$outfile" ;;
+    codex)  codex exec "${MODEL_FLAG[@]}" -o "$outfile" - ;;
+    gemini) gemini "${MODEL_FLAG[@]}" -p "$(cat -)" > "$outfile" ;;
+    claude) claude "${MODEL_FLAG[@]}" --print "$(cat -)" > "$outfile" ;;
   esac
 }
 ```
@@ -136,9 +136,11 @@ PROMPT_EOF
 ADVERSARY_PID=$!
 ```
 
-**1c. Run Claude's review (Steps 1-5 as normal):**
+**1c. Run Claude's review (analysis only — Steps 1-4):**
 
-While the adversary runs in the background, proceed with the full Claude review workflow (Steps 1 through 5). Collect all findings into `CLAUDE_FINDINGS`.
+While the adversary runs in the background, proceed with the analysis phases of the Claude review workflow (Steps 1 through 4). Collect all findings into `CLAUDE_FINDINGS`.
+
+**In converse mode, do NOT execute Step 5** — no `AskUserQuestion`, no PR comments, no review-stamp writing during the initial pass. Those side effects belong only to the final consensus report (Phase 4/5). Running them here would duplicate outputs and surface non-consensus findings to the user.
 
 **1d. Wait for the adversary to finish:**
 
@@ -295,7 +297,7 @@ Read `.claude/skills/review/checklist.md`.
 Only run this step if:
 - `$ARGUMENTS` contains "greptile", OR
 - A file exists at `$HOME/.claude/review/projects/$REMOTE_SLUG/greptile-history.md` for this repo
-  (derive `REMOTE_SLUG` from `gh repo view --json nameWithOwner --jq '.nameWithOwner' | tr '/' '__'`)
+  (derive `REMOTE_SLUG` from `gh repo view --json nameWithOwner --jq '.nameWithOwner' | sed 's|/|__|g'` — `tr` can only map to a single character, so use `sed` to produce `owner__repo`)
 
 Read `.claude/skills/review/greptile-triage.md` and follow the fetch, filter, classify, and escalation detection steps.
 
@@ -585,7 +587,9 @@ If no TODO file exists, skip silently.
 
 ## Step 6: Write Review Stamp
 
-**If no unresolved CRITICAL findings** (all resolved as B/C, or none existed):
+**Skip this step entirely in PR mode (`/review pr <number>`)** — the review stamp hashes `git diff --cached` which is meaningless when reviewing a remote PR diff. The stamp is a local-branch-review gate only.
+
+**If no unresolved CRITICAL findings** (all resolved as B/C, or none existed) AND not in PR mode:
 
 Compute the diff hash and write the review stamp:
 

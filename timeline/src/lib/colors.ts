@@ -14,7 +14,7 @@ const CATEGORY_COLORS: Record<Category, ColorSet> = {
 };
 
 export function getCategoryColors(category: Category): ColorSet {
-  return CATEGORY_COLORS[category];
+  return CATEGORY_COLORS[category] ?? CATEGORY_COLORS.other;
 }
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -29,5 +29,5 @@ const CATEGORY_LABELS: Record<Category, string> = {
 };
 
 export function getCategoryLabel(category: Category): string {
-  return CATEGORY_LABELS[category];
+  return CATEGORY_LABELS[category] ?? CATEGORY_LABELS.other;
 }
