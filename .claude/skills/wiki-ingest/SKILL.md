@@ -12,6 +12,22 @@ Read the source. Write the wiki. Cross-reference everything. A single source typ
 
 ---
 
+## Parameters (skill-as-method-call)
+
+This skill is a parameterized procedure (see `wiki/concepts/skill-as-method-call.md`). Same steps, different invocations.
+
+- `SOURCE` (required) — a `https://` URL, a local file path, an image path, or pasted content. Detected from arg shape.
+- `--emphasis=<area>` — bias extraction toward a domain (e.g., `--emphasis=architecture`, `--emphasis=people`, `--emphasis=decisions`). If omitted, extract broadly.
+- `--granularity=<level>` — `minimal` (source + entities only), `standard` (default: source + entities + concepts), `deep` (also extract questions, add contradictions pass, update overview).
+- `--force` — skip the manifest hash check and re-ingest even if unchanged.
+- `--dry-run` — list what would be created/updated without writing anything.
+
+Default invocation: `/wiki-ingest <url>` → `{granularity: standard, emphasis: broad, force: false}`.
+
+Discover params by reading the user message verbatim. "Ingest this, focus on architecture" → `--emphasis=architecture`. "Just give me the source page" → `--granularity=minimal`. "Re-ingest" → `--force`.
+
+---
+
 ## Delta Tracking
 
 Before ingesting any file, check `.raw/.manifest.json` to avoid re-processing unchanged sources.

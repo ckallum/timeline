@@ -22,9 +22,34 @@ Open this directory directly in Obsidian to use it as a vault. Open it in Claude
 - `/autoingest` — run the ingest loop (kick off recurring runs with `/loop 24h /autoingest`)
 - `/promote` — turn a quicknote into a wiki page
 - `/timeline` — open the web viewer
-- `/day [date]` — view a specific day node
+- `/day [date] [--brief]` — view a specific day node; `--brief` produces an analyst diarization instead of raw content
 - `/superhuman` — query across journal + wiki
 - `/wiki`, `/wiki-ingest`, `/wiki-query`, `/wiki-lint`, `/save`, `/autoresearch`, `/canvas` — same as claude-obsidian
+
+## Routing (resolver)
+
+When intent matches, read the named file FIRST before acting. Keep this section short; the skill file carries the detail.
+
+- Ingesting any source → read `.claude/skills/wiki-ingest/SKILL.md`
+- Reviewing code or a PR → read `.claude/skills/review/SKILL.md` + `.claude/skills/review/checklist.md`
+- Querying the vault → read `.claude/skills/wiki-query/SKILL.md` and `wiki/hot.md`
+- Health-checking the vault → read `.claude/skills/wiki-lint/SKILL.md`
+- Writing Obsidian markdown → read `.claude/skills/obsidian-markdown/SKILL.md`
+- Capturing to the day node → read `.claude/skills/journal/SKILL.md` or `.claude/skills/quicknote/SKILL.md`
+- Opening the viewer → read `.claude/skills/timeline/SKILL.md`
+- Starting a new session → `wiki/hot.md` is auto-loaded by SessionStart hook; re-read `wiki/hot.md` after any compaction
+
+Do not inline skill content here. This file stays a routing table.
+
+## Codify on Repeat
+
+If I ask you to do something manually that is clearly the kind of thing that will recur, **propose codifying it as a skill file after the first successful execution**. Follow Garry Tan's rule (see `wiki/concepts/codify-on-repeat.md`):
+
+1. First request: do it manually on 3-10 items. Ship the output.
+2. If I approve: suggest a skill file name and a parameter shape.
+3. If it should run autonomously: suggest a cron schedule or `/loop` invocation.
+
+The test: if I have to ask you for the same shape of thing twice, you failed.
 
 ## Privacy
 
