@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                    Claude Code Session                   │
 │                                                         │
@@ -101,7 +101,7 @@ Add to `.claude/settings.json`:
 
 Replace grep-based search in Standard and Deep modes with QMD:
 
-```
+```text
 ## Standard Query Workflow (updated)
 
 1. Read wiki/hot.md first (unchanged)
@@ -122,7 +122,7 @@ qmd --db .qmd/index.sqlite status 2>/dev/null && echo "qmd_available" || echo "q
 
 Replace grep across all directories with QMD:
 
-```
+```text
 ## Search Strategy (updated)
 
 1. Read wiki/hot.md for recent context (unchanged)
@@ -136,27 +136,37 @@ Replace grep across all directories with QMD:
 
 ### 4. Reindex Hooks
 
-Add to `.claude/hooks/hooks.json`:
+Add a `PostToolUse` entry to `.claude/settings.json` under `hooks`:
 
 **PostToolUse hook (Write/Edit):**
 ```json
 {
-  "event": "PostToolUse",
-  "tools": ["Write", "Edit"],
-  "command": "qmd --db .qmd/index.sqlite update 2>/dev/null || true",
-  "timeout_ms": 5000
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "tool == \"Write\" || tool == \"Edit\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "qmd --db .qmd/index.sqlite update 2>/dev/null || true"
+          }
+        ],
+        "description": "Update QMD FTS5 index after file changes"
+      }
+    ]
+  }
 }
 ```
 
 **Autoingest / wiki-ingest epilogue:**
 
 Add to end of autoingest SKILL.md execution flow (step 7, after timeline rebuild):
-```
+```text
 8. **Reindex QMD**: run `qmd --db .qmd/index.sqlite update && qmd --db .qmd/index.sqlite embed` (if QMD installed).
 ```
 
 Same for wiki-ingest SKILL.md (after step 10, update log):
-```
+```text
 12. **Reindex QMD**: run `qmd --db .qmd/index.sqlite update && qmd --db .qmd/index.sqlite embed` (if QMD installed).
 ```
 

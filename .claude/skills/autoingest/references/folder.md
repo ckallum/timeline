@@ -11,7 +11,7 @@ Watches a local directory for new files. Default: `inbox/unsorted/`.
 
 - **`recursive`** (bool, default `false`) — walk subdirectories recursively instead of listing only top-level files.
 - **`match`** (glob string, optional) — only process files matching this pattern (e.g. `"*.md"`).
-- **`exclude`** (string[], optional) — top-level subfolder names to skip entirely during walking. Checked against the first path component relative to `path`.
+- **`exclude`** (string[], optional) — top-level subfolder names to skip entirely during walking. Only matches the first path component relative to `path` (e.g. `"Notion"` skips `Notion/` but not `Technical/Notion/`).
 
 Example with all optional fields:
 ```json
@@ -30,7 +30,7 @@ Example with all optional fields:
 1. List files in `path`:
    - If `recursive` is false (default): flat listing of `path`
    - If `recursive` is true: `find "$path" -type f` with:
-     - `-not -path "*/<name>/*"` for each entry in `exclude`
+     - `-not -path "$path/<name>/*"` for each entry in `exclude` (anchored to base path, matches top-level only)
      - `-name "$match"` if `match` is set
    - Always quote `"$path"` in shell commands (handles spaces in iCloud paths etc.)
 2. Check each against `.raw/.manifest.json`
