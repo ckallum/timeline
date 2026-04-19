@@ -1,0 +1,800 @@
+---
+type: plan
+title: "Timeline — Implementation Plan"
+created: 2026-04-11
+updated: 2026-04-11
+status: ready-to-implement
+audience: external Claude Code instance, fresh repo
+references_repo: /Users/callumke/Projects/claude-obsidian
+target_repo: /Users/callumke/Projects/timeline
+target_remote: github.com/ckallum/timeline
+tags:
+  - meta
+  - plan
+  - timeline
+  - second-brain
+---
+
+# Timeline — Implementation Plan
+
+> Self-contained spec. The implementing Claude instance will not have seen the conversation that produced this. Read this top to bottom, then start at "Phase 1".
+
+## Mission
+
+Build `timeline`: a personal **second brain** living at `~/Projects/timeline`. It is simultaneously an Obsidian vault (opened directly in Obsidian) and a Claude Code plugin. It catalogues the user's life as a continuous timeline. It is a *superset* of a knowledge base. It journals, captures quick notes, sets reminders, ingests sources, runs recurring background ingests, and rolls everything up into one note per day. The user talks to it like talking to themselves, and like talking to a "superhuman" version of themselves with infinite memory and great research skills.
+
+It follows [Karpathy's gist on LLM-augmented knowledge bases](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f):
+
+> The tedious part of maintaining a knowledge base is not the reading or the thinking — it's the bookkeeping. The human's job is to curate sources, direct the analysis, ask good questions, and think about what it all means. The LLM's job is everything else.
+
+A headline deliverable is a **local timeline web viewer**: a single React/Tailwind page (no server) that visualizes the day-node timeline, hover summaries, and click-to-expand detail panel. The repo is named after it.
+
+## Obsidian vs iCloud
+
+`timeline` is a native Obsidian vault, same shape as the reference repo `claude-obsidian`. The user opens `~/Projects/timeline` directly in Obsidian as a vault. **No iCloud involvement.** The reference repo itself isn't in iCloud either; the earlier plan's iCloud mentions referred to a *one-time migration source* (the user's existing personal notes in `iCloud~md~obsidian`), not to where `timeline` lives. That migration is an optional Phase 6 script.
+
+## Reference Repo
+
+Everything copyable lives in `/Users/callumke/Projects/claude-obsidian`. When this plan says "copy from reference repo", that's the path. Specific files are called out in the **Skills to Copy** section. The reference repo is the working scaffold for `claude-obsidian`, a Claude Code plugin built around the LLM Wiki pattern. `timeline` follows the same shape but extends it.
+
+## Repo Layout
+
+Location: `~/Projects/timeline`. Remote: `github.com/ckallum/timeline`.
+
+```
+timeline/
+├── CLAUDE.md                    # vault instructions (see template below)
+├── README.md
+├── .gitignore                   # tracks scaffolding only; see "Privacy & Git" below
+├── .claude/
+│   ├── settings.json            # plugin settings, hooks
+│   ├── hooks/
+│   │   └── hooks.json           # SessionStart, PostCompact, PostToolUse, Stop, plus daily autoingest
+│   ├── commands/                # slash commands (one md file per command)
+│   ├── agents/                  # subagents (autoingest, journal-rollup, etc.)
+│   └── skills/                  # all skills, copied + new
+├── _templates/                  # Obsidian templater files
+├── _attachments/                # images, PDFs, voice memos
+├── .raw/                        # immutable inbound sources (mirrors claude-obsidian)
+│   ├── README.md                # tracked in git; explains the folder's purpose
+│   ├── articles/
+│   ├── images/
+│   ├── voice/
+│   ├── bookmarks/               # X bookmarks land here (stretch goal)
+│   └── .manifest.json
+├── wiki/                        # Claude-curated knowledge base (same as claude-obsidian)
+│   ├── README.md                # tracked in git; explains the folder's purpose
+│   ├── index.md
+│   ├── hot.md
+│   ├── log.md
+│   ├── overview.md
+│   ├── concepts/
+│   ├── entities/
+│   ├── sources/
+│   ├── domains/                 # first-class domain pages (fixes the gap in claude-obsidian)
+│   ├── questions/
+│   ├── meta/
+│   └── canvases/
+├── journal/                     # NEW: one note per day, the timeline backbone
+│   ├── 2026/
+│   │   ├── 04/
+│   │   │   └── 2026-04-11.md
+│   │   └── _index.md
+│   └── _index.md
+├── inbox/                       # NEW: quicknotes and unprocessed captures
+│   ├── quicknotes.md            # rolling append-only log
+│   └── unsorted/                # files dropped here get autoingested
+├── reminders/                   # NEW: structured reminders, queryable via Bases
+│   ├── active.md
+│   ├── completed.md
+│   └── reminders.base
+├── timeline/                    # NEW: web viewer
+│   ├── index.html
+│   ├── src/
+│   ├── package.json
+│   ├── tailwind.config.js
+│   ├── vite.config.ts
+│   └── data/
+│       └── timeline.json        # generated by `npm run build:data`
+└── scripts/
+    ├── build-timeline-data.ts   # walks journal/ + wiki/ + reminders/ → timeline.json
+    └── migrate-from-icloud.ts   # one-time import of the user's existing personal vault
+```
+
+## Vault Operating Model
+
+1. **Day node is the spine.** Every day has exactly one note in `journal/YYYY/MM/YYYY-MM-DD.md`. Created automatically by the daily autoingest (or on first capture of the day, whichever comes first). The day node is the *unit of timeline rendering*.
+
+2. **All capture types roll up to today's day node.** Journal entries, quicknotes, reminders set, ingests run, git commits across watched repos, recipes added, photos taken — every event gets a one-line entry under a typed section in today's day node, with a wikilink to the actual page if one was created.
+
+3. **Wiki is for *processed* knowledge.** When a quicknote turns into a real page, it gets a `wiki/concepts/` or `wiki/sources/` page like in `claude-obsidian`. The day node still records "promoted quicknote → [[Page Title]]" as the audit trail.
+
+4. **Talking to the second brain** is just Claude Code in this directory. The user types `/journal`, `/quicknote`, `/reminder`, `/autoingest`, or just talks. The skills route to the right place.
+
+## Day Node Schema
+
+Every day note is a markdown file with frontmatter that the timeline viewer reads. Keep frontmatter machine-readable; keep the body human.
+
+```markdown
+---
+type: day
+title: "2026-04-11"
+date: 2026-04-11
+day_of_week: Saturday
+weather: sunny
+mood: ok                          # optional, set by /journal
+counts:
+  journal_entries: 1
+  quicknotes: 3
+  ingests: 2
+  reminders_set: 1
+  reminders_completed: 2
+  git_commits: 8
+  pages_created: 5
+  pages_updated: 4
+  photos: 0
+  voice_memos: 0
+summary_one_liner: "Shipped second-brain plan. Ingested 4 LessWrong posts. 3 quick recipe links."
+tags:
+  - day
+related:
+  - "[[2026-04-10]]"
+  - "[[2026-04-12]]"
+  - "[[journal/_index]]"
+---
+
+# Saturday, 11 April 2026
+
+## Morning
+[journal entry, written by /journal]
+
+## Captures
+- [[quicknotes#2026-04-11-0937]] — "interesting pattern with X"
+- [[quicknotes#2026-04-11-1142]] — "remember to ask Y about Z"
+
+## Reminders
+- [x] Reply to mum (set 2026-04-09, completed today)
+- [ ] Buy flank steak before Thursday → [[reminders/active#flank-steak]]
+
+## Ingests
+- 2026-04-11 11:42 — [[A Sufficiently Detailed Spec Is Code]] from haskellforall.com
+- 2026-04-11 12:15 — [[What is Evidence]] from lesswrong.com
+
+## Wiki Activity
+- Created: [[Spec-as-Code Thesis]], [[Specification Slop]], [[Eliezer Yudkowsky]]
+- Updated: [[index]], [[hot]]
+
+## Code
+- claude-obsidian: 8 commits (b16ed → f2645d)
+  - "Add badges, comparison table, canvas companion"
+  - "docs: cross-link with claude-canvas plugin"
+  - …
+
+## Recipes
+- [[Aubergine Curry]] — saved from Mob
+
+## Evening
+[journal entry, written by /journal]
+```
+
+The frontmatter `counts` and `summary_one_liner` fields are what the timeline web viewer uses for hover summaries. The body is what it shows when a node is clicked.
+
+## Skills to Copy from `claude-obsidian`
+
+Copy verbatim, preserving directory structure under `.claude/`. These already work:
+
+| Skill | Source path | Purpose |
+|---|---|---|
+| `wiki` | `.claude/skills/wiki/` | Setup, scaffold, route to sub-skills |
+| `wiki-ingest` | `.claude/skills/wiki-ingest/` | Single + batch source ingestion. Already supports URL + image + delta tracking. |
+| `wiki-query` | `.claude/skills/wiki-query/` | Read hot → index → drill, answer with citations |
+| `wiki-lint` | `.claude/skills/wiki-lint/` | Health check: orphans, dead links, gaps |
+| `save` | `.claude/skills/save/` | File current conversation as a wiki note |
+| `autoresearch` | `.claude/skills/autoresearch/` | Karpathy-style autonomous research loop |
+| `canvas` | `.claude/skills/canvas/` | Add images, text, PDFs to Obsidian canvases |
+| `defuddle` | `.claude/skills/defuddle/` | Strip web clutter before ingest |
+| `obsidian-markdown` | `.claude/skills/obsidian-markdown/` | Canonical Obsidian Flavored Markdown reference |
+| `obsidian-bases` | `.claude/skills/obsidian-bases/` | Create `.base` files for table/card/list views |
+
+Also copy:
+
+- `.claude/hooks/hooks.json` — has SessionStart hot-cache injection, PostCompact reload, PostToolUse auto-commit, Stop hot-cache reminder. Keep all four. Add the daily autoingest hook (see below).
+- `.claude/commands/` — slash command pointers for the copied skills.
+- `.claude/agents/wiki-ingest.md`, `wiki-lint.md`.
+- `_templates/{source,concept,entity,comparison,question}.md`.
+- `wiki/{index,hot,log,overview}.md` as starting scaffolding (rewrite the content for the new vault but keep the format).
+
+## Skills to Build (NEW)
+
+Each new skill follows the same structure as the existing ones: `.claude/skills/<name>/SKILL.md` plus optional `references/`. Start each `SKILL.md` with frontmatter (`name`, `description`, `triggers`, `tools`), then a concise spec.
+
+### `/journal` — open or write today's day node
+
+**Triggers**: `journal`, `/journal`, `dear diary`, `today I`.
+
+**Behavior**:
+1. Compute today's date. Locate `journal/YYYY/MM/YYYY-MM-DD.md`.
+2. If missing, create it from `_templates/day.md` (new template — see below) with frontmatter pre-filled.
+3. If the user provided text after `/journal`, append it as a new entry under `## <Time of day>` in the body. Time of day = Morning (≤12), Afternoon (12–17), Evening (17–22), Night (>22).
+4. If no text was provided, ask one open question ("How's the day going?") and append the answer.
+5. Bump `counts.journal_entries`.
+6. Update `journal/_index.md` (add today if missing).
+7. Update `wiki/hot.md` "Last Updated" line.
+
+### `/quicknote` — append a fragment to today's inbox
+
+**Triggers**: `quicknote`, `/quicknote`, `qn`, `note this`, `remember that`.
+
+**Behavior**:
+1. Append the captured text to `inbox/quicknotes.md` with a heading anchor of the form `## 2026-04-11-0937` (date + 24h time, hyphenated, anchorable).
+2. Add a one-line entry under `## Captures` in today's day node, wikilinking the anchor.
+3. Bump `counts.quicknotes`.
+4. Do NOT promote to a wiki page yet — that's a separate explicit step (`/promote`).
+
+### `/reminder` — set a reminder
+
+**Triggers**: `reminder`, `/reminder`, `remind me`.
+
+**Parser**: accept natural language. `remind me to buy flank steak before Thursday` → `{text: "buy flank steak", due: 2026-04-16, set: 2026-04-11}`. Use a simple parser: a regex pass for "tomorrow", "next week", "before <weekday>", absolute dates like "2026-05-01", and times like "5pm". If parsing fails, ask one clarifying question.
+
+**Behavior**:
+1. Append to `reminders/active.md` as a Markdown task list item with frontmatter-style inline metadata:
+   ```markdown
+   - [ ] Buy flank steak <!-- due:2026-04-16 set:2026-04-11 source:journal/2026/04/2026-04-11.md -->
+   ```
+2. Add a one-line entry under `## Reminders` in today's day node.
+3. Bump `counts.reminders_set`.
+4. (Optional, gated by `--macos`) Also create the reminder in macOS Reminders via `osascript`. Keep this opt-in because it's a side effect outside the vault.
+
+A separate `/done <substring>` skill marks a reminder complete: moves the line from `reminders/active.md` to `reminders/completed.md`, bumps `counts.reminders_completed` on today's day node, and ticks the box.
+
+### `/autoingest` — background ingest loop
+
+**Triggers**: `autoingest`, `/autoingest`, run on a schedule via `/loop` (see Hooks section).
+
+**Behavior**: this is the "infinite memory" loop. It walks every configured source and routes each new item to `wiki-ingest`. The configuration lives at `.claude/autoingest.config.json`:
+
+```json
+{
+  "sources": [
+    { "type": "folder", "path": "inbox/unsorted/", "kind": "any", "enabled": true },
+    { "type": "folder", "path": "/Users/callumke/Library/Mobile Documents/iCloud~md~obsidian/Documents/callum/Personal", "kind": "obsidian-vault", "follow_links": true, "link_depth": 1, "enabled": false },
+    { "type": "git-repos", "paths": ["~/Projects/claude-obsidian", "~/Projects/timeline"], "since": "yesterday", "enabled": true },
+    { "type": "rss", "feeds": ["https://haskellforall.com/feeds/posts/default", "https://www.lesswrong.com/feed.xml"], "enabled": false },
+    { "type": "screenshots", "path": "~/Desktop", "match": "Screenshot*.png", "after": "yesterday", "enabled": false },
+    { "type": "voice-memos", "path": "~/Library/Application Support/com.apple.voicememos/Recordings/", "after": "yesterday", "enabled": false },
+    { "type": "x-bookmarks", "enabled": false, "auth_method": "cookie", "since": "yesterday" }
+  ]
+}
+```
+
+Every source has an `enabled` flag so new ones can ship disabled and turn on after the user reviews them.
+
+**Steps**:
+1. Read config. For each **enabled** source, list new items since last run (use `.raw/.manifest.json` for delta tracking, same as `wiki-ingest` already does).
+2. For each new item, call the appropriate ingest path:
+   - **folder/any**: copy file into `.raw/`, then run `wiki-ingest` single-source flow.
+   - **obsidian-vault**: walk all `.md` files. For each, ingest as a source. If `follow_links: true`, extract external URLs from the body and queue each as a child URL ingest at `link_depth` 1. (This is the recipe-fetching behavior — depth 1 means "fetch the recipes themselves, but don't recurse into the recipes' own outbound links".)
+   - **git-repos**: for each repo, run `git log --since=...` and write a summary of commits to `.raw/git/<repo>-<date>.md`, then ingest. Counts go into the day node `git_commits` field.
+   - **rss**: fetch each feed, identify new items by GUID, save to `.raw/articles/`, ingest each.
+   - **screenshots**: copy each screenshot to `_attachments/screenshots/`, run the existing `wiki-ingest` image flow.
+   - **voice-memos**: transcribe via local whisper (or surface as TODO if no transcription tool is configured), save to `.raw/voice/`, ingest.
+   - **x-bookmarks** (stretch goal, see below): fetch new bookmarks, save each to `.raw/bookmarks/<tweet-id>.md`, ingest.
+3. Roll up everything into today's day node. Bump the relevant `counts` fields. Append entries to the right body sections.
+4. Write a one-line `summary_one_liner` to today's frontmatter.
+5. Update `wiki/log.md` and `wiki/hot.md`.
+6. Regenerate `timeline/data/timeline.json` (call `scripts/build-timeline-data.ts`).
+
+**Concurrency**: process enabled sources in parallel where possible. Sources are independent. Within a source, process items sequentially to keep manifest writes safe.
+
+**Privacy gate**: before any external fetch, check the source's `kind`. If it's `obsidian-vault` and the vault path looks personal (anything under `iCloud~md~obsidian`), gate the entire run behind a one-time confirmation prompt that the user has acknowledged the destination repo is private. Persist the acknowledgement in `.claude/autoingest.config.json` (`privacy_acknowledged: true`).
+
+#### Stretch goal: X bookmarks source
+
+X (Twitter) has no public bookmarks API. Two realistic options:
+
+1. **Cookie-based scraper.** The user exports their `auth_token` cookie from a logged-in browser session and stores it in `~/.config/timeline/x-cookie` (outside the repo). The ingester hits `https://x.com/i/api/graphql/<id>/Bookmarks` with that cookie. Brittle (X rotates the GraphQL IDs) but works today. Save each bookmark to `.raw/bookmarks/<tweet-id>.md` with `{author, url, text, date, media}` frontmatter, then run standard ingest.
+2. **Manual export.** User clicks an "Export bookmarks" extension (e.g., [Dewey](https://usedewey.com/) or similar) which drops a JSON or CSV into `inbox/unsorted/`. The `folder` source handler recognizes the file and splits it into one `.raw/bookmarks/*.md` per bookmark before ingesting.
+
+Ship option 2 first. Option 1 is the stretch. Mark `x-bookmarks` with `"enabled": false` in the default config and document both options in `.claude/skills/autoingest/references/x-bookmarks.md`.
+
+### `/promote <quicknote-anchor>` — turn a quicknote into a wiki page
+
+Reads the quicknote, asks "concept, entity, source, or question?", creates the appropriate `wiki/<type>/<title>.md` page, replaces the quicknote line in `inbox/quicknotes.md` with `→ [[Promoted Title]]`, and adds the new page to `wiki/index.md`.
+
+### `/timeline` — open or rebuild the web viewer
+
+1. If `timeline/dist/index.html` doesn't exist, run `cd timeline && npm install && npm run build`.
+2. Run `npm run build:data` to regenerate `timeline/data/timeline.json` from the current vault state.
+3. `open timeline/dist/index.html` (macOS).
+
+### `/day [date]` — show a specific day's node
+
+`/day` (no arg) → today. `/day yesterday`, `/day 2026-04-08`, `/day last monday` all work via the same date parser as `/reminder`. Reads and displays the day node in chat.
+
+### `/superhuman <question>` — talk to the second brain
+
+The "talking to a superhuman version of yourself" entry point. It's a thin wrapper over `wiki-query` that *also* searches `journal/`, `inbox/`, and `reminders/`, not just `wiki/`. The result is cited the same way `wiki-query` cites today.
+
+## Hooks & Scheduled Runs
+
+Copy the four hooks from `claude-obsidian/.claude/hooks/hooks.json` verbatim (SessionStart, PostCompact, PostToolUse auto-commit, Stop hot-cache reminder). **Do not** add a launchd/cron entry. Use the `/loop` skill instead.
+
+### Scheduling via `/loop`
+
+The Claude Code harness ships with a `loop` skill: `/loop <interval> <command>` runs a prompt or slash command on a recurring interval inside the current session. For the daily autoingest:
+
+```
+/loop 24h /autoingest
+```
+
+Or let the model self-pace by omitting the interval. Also useful:
+
+```
+/loop 6h /autoingest            # more frequent during active days
+/loop 5m /journal --prompt-me   # ambient journaling nudge during a work session
+```
+
+**Tradeoff** — `/loop` only runs while the Claude session is open. That's actually desirable here: background ingest only fires when the user is actively at their machine, which matches the "talking to yourself" ergonomics and avoids the surprise of the agent running unattended overnight. When the user closes the session, the loop stops cleanly and resumes on the next session open.
+
+**If the user later wants true daemon behavior**, document the fallback in `.claude/skills/autoingest/references/daemon-fallback.md`: a launchd plist running `claude --print '/autoingest'`. Do not install by default. This is a "here's how if you want it" note, not a shipped feature.
+
+### Session bootstrap
+
+Add a line to `CLAUDE.md` suggesting the user run `/loop 24h /autoingest` on first open of the day. Or ship a tiny `SessionStart` hook addition that *reminds* the user rather than auto-starts a loop:
+
+```json
+{
+  "type": "prompt",
+  "prompt": "If today's journal entry does not exist, remind the user that /loop 24h /autoingest has not started this session. Do not start it automatically."
+}
+```
+
+Explicit user consent each session beats silent background behavior.
+
+## Templates
+
+Add `_templates/day.md`:
+
+```markdown
+---
+type: day
+title: "{{date:YYYY-MM-DD}}"
+date: {{date:YYYY-MM-DD}}
+day_of_week: {{date:dddd}}
+counts:
+  journal_entries: 0
+  quicknotes: 0
+  ingests: 0
+  reminders_set: 0
+  reminders_completed: 0
+  git_commits: 0
+  pages_created: 0
+  pages_updated: 0
+  photos: 0
+  voice_memos: 0
+summary_one_liner: ""
+tags:
+  - day
+related:
+  - "[[journal/_index]]"
+---
+
+# {{date:dddd, D MMMM YYYY}}
+
+## Morning
+
+## Afternoon
+
+## Evening
+
+## Captures
+
+## Reminders
+
+## Ingests
+
+## Wiki Activity
+
+## Code
+
+## Notes
+```
+
+Add `_templates/quicknote.md` and `_templates/reminder.md` in the same shape.
+
+## Domains — Fix the Gap from `claude-obsidian`
+
+In `claude-obsidian` the wiki skill says there should be a `domains/` folder with first-class domain pages, but it was never scaffolded. **Do scaffold it here.** Domain pages live at `wiki/domains/<domain>.md` with this frontmatter:
+
+```yaml
+---
+type: domain
+title: "Personal Health"
+subdomain_of: ""
+page_count: 0
+status: developing
+related:
+  - "[[domains/_index]]"
+---
+```
+
+The body lists the in-domain pages. Update `wiki/index.md` `## Domains` section to point at each. The `wiki-lint` skill should be extended to count pages per domain by reading the `domain:` frontmatter field on every note and updating each domain page's `page_count`.
+
+Suggested starter domains for a personal second brain:
+
+- `personal-health` — fitness, mood, food
+- `relationships` — family, friends, letters
+- `creative` — writing, music, photography
+- `code` — projects, learning, commits
+- `reading` — books, articles, essays
+- `recipes` — the food/Recipes.md content fits here
+- `finance` — bills, subscriptions, investments
+- `places` — travel, locations, memories
+- `epistemics` — rationality, decision-making (the Yudkowsky/Gonzalez material from the reference repo)
+
+## Timeline Web Viewer
+
+Single-page React app, no server, opened locally with `open timeline/dist/index.html`. Build with Vite + React + Tailwind. Reads `timeline/data/timeline.json` (generated by the build script).
+
+### Reference image
+
+The viewer should match this reference layout: a vertical timeline running down the center of the page, with circular icon nodes alternating left and right, each with a colored card next to it. See [the user-provided reference screenshot](#) — vertical center spine, dot per item, alternating cards left/right.
+
+### Visual spec
+
+- **Vertical spine** down the center, full page height, with one **circular dot** per day (or per *active* day — days with `counts.*` totals > 0). Days with no activity render as a smaller, paler dot.
+- **Hover state**: a tooltip card appears next to the dot showing:
+  - the date (e.g. "Saturday, 11 April 2026")
+  - the `summary_one_liner`
+  - up to 5 count bullets ("8 git commits, 3 quicknotes, 2 ingests, 1 recipe added, 1 reminder set")
+- **Click state**: the timeline column shrinks and shifts to the right edge of the viewport (transition: 300ms ease-out). The remaining ~70% of the viewport fills with a **detail panel** showing the day's body content rendered as Markdown:
+  - frontmatter pulled into a header block (date, weather, mood, totals)
+  - sections rendered in order (Morning, Afternoon, Captures, Reminders, Ingests, Wiki Activity, Code, …)
+  - any wikilinks in the body resolve to `obsidian://open?vault=second-brain&file=<path>` so clicking jumps into Obsidian
+- **Color coding**: each day node is colored by the dominant activity type for that day (most-frequent count category). Use a palette of 6–8 calm tailwind colors.
+- **Header**: month/year sticky header that updates as the user scrolls. Year jumps in a left-side nav rail.
+- **Empty state**: if `timeline.json` is empty, show a message ("No day notes yet. Run /journal or /autoingest in your vault.").
+
+### Files to scaffold
+
+```
+timeline/
+├── package.json                 # vite, react, tailwind, typescript, react-markdown, gray-matter, date-fns
+├── vite.config.ts
+├── tailwind.config.js
+├── postcss.config.js
+├── tsconfig.json
+├── index.html
+├── src/
+│   ├── main.tsx
+│   ├── App.tsx                  # layout: <Timeline /> + <DetailPanel />
+│   ├── components/
+│   │   ├── Timeline.tsx         # vertical spine, dots, hover cards
+│   │   ├── DayNode.tsx          # single dot + tooltip
+│   │   ├── DetailPanel.tsx      # markdown render + frontmatter header
+│   │   ├── YearNav.tsx          # left-side year jump
+│   │   └── EmptyState.tsx
+│   ├── hooks/
+│   │   └── useTimelineData.ts   # fetches data/timeline.json
+│   ├── lib/
+│   │   ├── colors.ts            # category → tailwind color
+│   │   └── format.ts            # date helpers
+│   └── styles/
+│       └── globals.css
+├── public/
+└── data/
+    └── timeline.json            # generated
+```
+
+### `timeline.json` shape
+
+```json
+{
+  "generated_at": "2026-04-11T18:30:00Z",
+  "days": [
+    {
+      "date": "2026-04-11",
+      "title": "Saturday, 11 April 2026",
+      "summary": "Shipped second-brain plan. Ingested 4 LessWrong posts. 3 quick recipe links.",
+      "counts": {
+        "journal_entries": 1,
+        "quicknotes": 3,
+        "ingests": 2,
+        "reminders_set": 1,
+        "reminders_completed": 2,
+        "git_commits": 8,
+        "pages_created": 5,
+        "pages_updated": 4
+      },
+      "dominant_category": "code",
+      "body_md": "# Saturday, 11 April 2026\n\n## Morning\n…",
+      "obsidian_uri": "obsidian://open?vault=second-brain&file=journal%2F2026%2F04%2F2026-04-11.md"
+    }
+  ]
+}
+```
+
+### `scripts/build-timeline-data.ts`
+
+A standalone TypeScript file run with `tsx` (no compile step). Walks `journal/**/*.md`, parses frontmatter with `gray-matter`, computes `dominant_category` from the highest count, and writes `timeline/data/timeline.json`. Idempotent. Re-runs on every `/autoingest` and on every `/timeline` invocation.
+
+## Privacy & Git
+
+Personal data is the highest-stakes concern in this whole plan. The rule:
+
+> Track the *scaffolding* of `wiki/` and `.raw/` (a README in each, explaining the folder). Never track the *contents* generated later.
+
+This lets the repo ship a coherent public structure (so `github.com/ckallum/timeline` shows what the vault is and how it works) while keeping every journal entry, every ingest, every personal note out of git forever.
+
+### `.gitignore`
+
+```gitignore
+# ignore everything inside wiki/ and .raw/ …
+wiki/*
+.raw/*
+wiki/**/*
+.raw/**/*
+
+# …except the top-level READMEs that document the folders
+!wiki/README.md
+!.raw/README.md
+
+# fully ignore personal capture folders
+journal/
+inbox/
+reminders/
+_attachments/
+
+# build outputs
+timeline/data/
+timeline/dist/
+timeline/node_modules/
+
+# local config with potential secrets
+.claude/autoingest.config.json
+.claude/autoingest.log
+
+# standard noise
+.DS_Store
+*.log
+```
+
+Notes:
+
+- The two `!wiki/README.md` / `!.raw/README.md` exceptions are the only files allowed under those folders. The initial commit creates each README explicitly with `git add -f wiki/README.md .raw/README.md`.
+- **`.claude/` itself is tracked** (scaffolding, hooks, skills, commands, agents) so the plugin ships with the repo. Only `autoingest.config.json` inside it is ignored because it may contain local paths / tokens.
+- `CLAUDE.md`, `README.md`, `_templates/`, `scripts/`, `timeline/src/`, `timeline/package.json`, `timeline/index.html`, `timeline/tailwind.config.js`, `timeline/vite.config.ts`, `timeline/tsconfig.json` are all tracked.
+
+### Track status at a glance
+
+| Path | Git state |
+|---|---|
+| `.claude/` | **Tracked** (minus `autoingest.config.json`, `autoingest.log`) |
+| `_templates/` | **Tracked** |
+| `scripts/` | **Tracked** |
+| `timeline/src/`, `timeline/*.config.*`, `timeline/package*.json`, `timeline/index.html` | **Tracked** |
+| `timeline/data/`, `timeline/dist/`, `timeline/node_modules/` | Ignored |
+| `wiki/README.md` | **Tracked** (force-added) |
+| `wiki/**` (everything else) | Ignored |
+| `.raw/README.md` | **Tracked** (force-added) |
+| `.raw/**` (everything else) | Ignored |
+| `journal/`, `inbox/`, `reminders/`, `_attachments/` | Ignored |
+| `CLAUDE.md`, `README.md`, `.gitignore` | **Tracked** |
+
+### Remote
+
+- Repo: `github.com/ckallum/timeline`. Can be public or private — the `.gitignore` makes public safe, but default to private until the user opts in.
+- **Never enable push automation.** The `PostToolUse` auto-commit hook from the reference repo only commits locally. That's deliberate. Document it in the README.
+- macOS Reminders integration: opt-in only, gated by an explicit `--macos` flag on `/reminder`.
+- Autoingest of the iCloud personal vault: gated by the privacy acknowledgement described in the autoingest spec.
+
+### Folder READMEs
+
+`wiki/README.md` and `.raw/README.md` should be short. Suggested content:
+
+**`wiki/README.md`**:
+
+```markdown
+# wiki/
+
+Claude-curated knowledge base. The structured, long-lived half of the vault.
+
+- `concepts/`, `entities/`, `sources/`, `domains/`, `questions/` — typed pages
+- `index.md`, `hot.md`, `log.md`, `overview.md` — navigation and cache
+- `meta/`, `canvases/` — dashboards and visual layers
+
+**Only this README is committed to git.** Every page generated by `/wiki-ingest`, `/journal`, `/save`, etc. is gitignored. That's intentional: the vault is personal.
+```
+
+**`.raw/README.md`**:
+
+```markdown
+# .raw/
+
+Immutable inbound sources. Claude reads but never modifies.
+
+- `articles/` — fetched web pages
+- `images/` — screenshots, scans, whiteboards
+- `voice/` — voice memo transcripts
+- `bookmarks/` — X bookmarks and similar saved posts
+- `.manifest.json` — delta-tracking hash ledger
+
+**Only this README is committed to git.** Every file added to this folder is gitignored. That's intentional: sources are personal.
+```
+
+## CLAUDE.md Template
+
+Drop this into the new repo as `CLAUDE.md`:
+
+```markdown
+# timeline — Personal Second Brain Vault
+
+This folder is both a Claude Code plugin and an Obsidian vault. It is my personal second brain: a continuous timeline of journal entries, quick notes, reminders, and ingested sources, built on the LLM Wiki pattern from claude-obsidian.
+
+Open this directory directly in Obsidian to use it as a vault. Open it in Claude Code to use it as a plugin. Same directory, two faces.
+
+## Vault Structure
+
+- `journal/` — one note per day (the timeline backbone)
+- `inbox/` — quicknotes and unprocessed captures
+- `reminders/` — active and completed reminders
+- `wiki/` — curated knowledge base (concepts, entities, sources, domains)
+- `.raw/` — immutable inbound sources
+- `timeline/` — local web viewer (open with /timeline)
+- `_templates/`, `_attachments/` — Obsidian templater + assets
+
+## Key Skills
+
+- `/journal` — write today's day note
+- `/quicknote` — capture a fragment
+- `/reminder` — set a reminder
+- `/autoingest` — run the ingest loop (kick off recurring runs with `/loop 24h /autoingest`)
+- `/promote` — turn a quicknote into a wiki page
+- `/timeline` — open the web viewer
+- `/day [date]` — view a specific day node
+- `/superhuman` — query across journal + wiki
+- `/wiki`, `/wiki-ingest`, `/wiki-query`, `/wiki-lint`, `/save`, `/autoresearch`, `/canvas` — same as claude-obsidian
+
+## Privacy
+
+This vault contains personal data. `.gitignore` tracks only the scaffolding: `.claude/`, `_templates/`, `scripts/`, `timeline/src/`, `CLAUDE.md`, `README.md`, plus one README each inside `wiki/` and `.raw/`. Every file generated by capture or ingest is gitignored. The auto-commit hook commits locally only; there is no push automation.
+
+## Style
+
+- Talk to me like talking to a notebook. Concise, no fluff.
+- I am the user; you are an extension of me with infinite memory and great research skills.
+- The tedious part of maintaining a knowledge base is bookkeeping; you handle it. I curate sources, ask questions, and decide what matters.
+```
+
+## Implementation Phases
+
+The implementing Claude should ship this in phases. Each phase ends in a working state.
+
+### Phase 1 — Scaffolding (1 commit)
+
+1. Create the repo at `~/Projects/timeline`. `git init`. Set remote to `github.com/ckallum/timeline` (but do not push yet).
+2. Write `CLAUDE.md`, `README.md`, `.gitignore` (see above). Write `wiki/README.md` and `.raw/README.md` (see above).
+3. Copy `.claude/skills/{wiki,wiki-ingest,wiki-query,wiki-lint,save,autoresearch,canvas,defuddle,obsidian-markdown,obsidian-bases}` from the reference repo.
+4. Copy `.claude/hooks/hooks.json`, `.claude/commands/`, `.claude/agents/` from the reference repo.
+5. Copy `_templates/` from the reference repo. Add `day.md`, `quicknote.md`, `reminder.md`.
+6. Create the empty folder skeleton (`wiki/`, `journal/`, `inbox/`, `reminders/`, `.raw/`, `_attachments/`, `timeline/`, `scripts/`).
+7. Run `/wiki` to scaffold `wiki/index.md`, `wiki/hot.md`, `wiki/log.md`, `wiki/overview.md`, all the `_index.md` files. Manually add the empty `wiki/domains/` folder + `_index.md`. These files are created by the scaffold but gitignored — that's expected.
+8. First commit: `git add .gitignore CLAUDE.md README.md .claude _templates` and `git add -f wiki/README.md .raw/README.md`. Verify `git status` shows nothing left in `wiki/` or `.raw/` except the two READMEs.
+9. **Acceptance**: `claude` opens cleanly in the new repo, `/wiki` reports a healthy vault, the four copied hooks fire, no errors in the autocommit hook, `git log` shows one clean commit with no personal content.
+
+### Phase 2 — Capture skills (2–3 commits)
+
+1. Build `.claude/skills/journal/SKILL.md` per the spec above. Write a tiny date helper in the SKILL.md (no separate code file needed; the skill *is* prose instructions).
+2. Build `.claude/skills/quicknote/SKILL.md`.
+3. Build `.claude/skills/reminder/SKILL.md` and `done/SKILL.md`.
+4. Build `.claude/skills/promote/SKILL.md`.
+5. Build `.claude/skills/day/SKILL.md` and `.claude/skills/superhuman/SKILL.md`.
+6. Add slash command pointers in `.claude/commands/`.
+7. **Acceptance**: invoking each command from a fresh session creates the expected files, updates today's day node, bumps counts.
+
+### Phase 3 — Autoingest (1–2 commits)
+
+1. Build `.claude/skills/autoingest/SKILL.md`. Sub-references for each `kind` (folder, obsidian-vault, git-repos, rss, screenshots, voice-memos, x-bookmarks) under `references/`.
+2. Write a starter `.claude/autoingest.config.json` (gitignored) with `inbox/unsorted/` and `git-repos` enabled, everything else disabled.
+3. Test `/autoingest` end-to-end by dropping a test file in `inbox/unsorted/` and confirming it lands in `wiki/sources/` with day-node bookkeeping.
+4. Document `/loop 24h /autoingest` as the recurring-run mechanism in `CLAUDE.md` and in `.claude/skills/autoingest/SKILL.md`.
+5. Write `.claude/skills/autoingest/references/x-bookmarks.md` describing both the manual-export and cookie-based paths. Leave `"x-bookmarks"` disabled in the default config. Stretch goal.
+6. Write `.claude/skills/autoingest/references/daemon-fallback.md` with the optional launchd plist for users who want unattended runs.
+7. **Acceptance**: manual `/autoingest` works, `/loop 24h /autoingest` kicks off a recurring run in the session and a second invocation 24h later produces the expected day-node updates.
+
+### Phase 4 — Timeline web viewer (3–4 commits)
+
+1. Scaffold `timeline/` with Vite + React + TypeScript + Tailwind. Use `npm create vite@latest timeline -- --template react-ts`, then add Tailwind per [tailwind docs](https://tailwindcss.com/docs/guides/vite).
+2. Write `scripts/build-timeline-data.ts` (uses `gray-matter`, `date-fns`, `glob`).
+3. Build `Timeline.tsx`, `DayNode.tsx`, `DetailPanel.tsx`, `YearNav.tsx`, `EmptyState.tsx` per the visual spec.
+4. Wire `useTimelineData` to fetch `data/timeline.json`.
+5. Style to match the reference image (vertical spine, alternating cards, colored circular icon nodes, hover tooltip, click expand).
+6. Ship `/timeline` skill that runs the build and opens the page.
+7. **Acceptance**: with at least 3 day notes in `journal/`, running `/timeline` opens a working viewer in the browser. Hover shows summary. Click expands. Wikilinks open Obsidian.
+
+### Phase 5 — Domains + lint (1 commit)
+
+1. Build `wiki/domains/` with first-class domain pages (see Domains section).
+2. Extend the copied `wiki-lint` skill: read `domain:` frontmatter across all notes, update each domain page's `page_count`, list orphan notes per domain.
+3. Update `wiki/index.md` `## Domains` section (currently empty in the reference repo).
+4. **Acceptance**: `lint the wiki` produces a domain breakdown.
+
+### Phase 6 — Polish & stretch goals
+
+- Tests for the date parser in `/reminder` and `/day`.
+- `scripts/migrate-from-icloud.ts` — one-time walker over `/Users/callumke/Library/Mobile Documents/iCloud~md~obsidian/Documents/callum/Personal` that ingests every `.md` file with `follow_links: true, link_depth: 1` so the recipe URLs also land in the vault. Gated by the privacy acknowledgement. Interactive: reports a dry-run summary first, then asks for confirmation.
+- X bookmarks ingest (see autoingest stretch goal). Ship option 2 (manual export) first; option 1 (cookie-based) second if the user wants it.
+- Optional: `/mood`, `/weather`, `/photo` helpers that bump fields in today's day node.
+- Optional: `/loop` presets file with common schedules the user can invoke by name.
+
+## Acceptance Checklist (for the implementing Claude)
+
+Tick these off before declaring done:
+
+- [ ] Fresh clone in a new directory; `claude` opens, `/wiki` reports healthy.
+- [ ] `/journal` creates today's day note and accepts text.
+- [ ] `/quicknote "test"` appends to inbox AND adds a Captures line to today's day node.
+- [ ] `/reminder remind me to test this tomorrow` parses correctly, files in `reminders/active.md`, adds to day node.
+- [ ] `/done test this` moves it to `reminders/completed.md` and bumps the day's `reminders_completed` count.
+- [ ] `/autoingest` runs without error against an empty `inbox/unsorted/` and reports "0 new items".
+- [ ] Drop a `.md` file with one URL in `inbox/unsorted/` and re-run `/autoingest`. Verify the file is ingested AND the linked URL is fetched as a child page.
+- [ ] `/loop 24h /autoingest` kicks off a recurring run in the session; the session's next fire actually runs `/autoingest`.
+- [ ] `/timeline` opens a working browser viewer with all day nodes shown and the click-to-expand interaction working.
+- [ ] `git status` after a full test session (journal, quicknote, reminder, ingest, timeline build) shows **no** tracked changes under `wiki/`, `.raw/`, `journal/`, `inbox/`, `reminders/`, `_attachments/`, `timeline/data/`.
+- [ ] `git log -p` on the initial commit shows only scaffolding files plus the two force-added READMEs. No personal content.
+- [ ] `.gitignore` rejects an attempted `git add wiki/index.md` (ignored file) but accepts `git add wiki/README.md` (force-added exception already in).
+
+## Settled Decisions
+
+These were resolved in planning and do not need re-litigation:
+
+- **Repo location**: `/Users/callumke/Projects/timeline`.
+- **Remote**: `github.com/ckallum/timeline`. Default to private. Push is manual; never automated.
+- **Obsidian is the vault UI**. Open `~/Projects/timeline` directly in Obsidian. No iCloud involvement for the vault itself.
+- **Scheduling**: use `/loop 24h /autoingest`, not launchd. Launchd is a documented fallback only.
+- **Git**: `wiki/` and `.raw/` are initialized with a `README.md` each (tracked in git) and everything else under them is gitignored forever. See the **Privacy & Git** section.
+- **X bookmarks**: stretch goal. Ship disabled. Manual-export path first, cookie-based second.
+- **Initial enabled autoingest sources**: `inbox/unsorted/` and `git-repos`. Everything else ships disabled.
+- **macOS Reminders integration**: off by default, opt-in via `--macos` on `/reminder`.
+
+## Open Questions (small, ask at Phase 1 start)
+
+1. Should `ckallum/timeline` be private or public? (Recommendation: private until the user opts in — even though the `.gitignore` makes public safe.)
+2. Which `git-repos` to watch for the initial `/autoingest` config? Reasonable default: `~/Projects/claude-obsidian` and `~/Projects/timeline`.
+3. Run the one-time iCloud migration (`scripts/migrate-from-icloud.ts`) in Phase 1, or wait until Phase 6? (Recommendation: Phase 6, after the capture skills are proven.)
+
+## What This Plan Deliberately Doesn't Do
+
+- **No mobile app.** Capture on mobile happens through the existing iCloud Obsidian vault; the second brain ingests from there.
+- **No cloud sync.** Local-only by design. Sync happens via iCloud's native folder sync if the user puts the repo inside the iCloud Drive folder.
+- **No vector search.** The wiki pattern relies on curated wikilinks and structured indexes, not embeddings. If the user wants semantic search later, layer it on top of the existing structure.
+- **No multi-user.** Single user. No accounts, no permissions.
+- **No LLM-generated mood detection.** Mood is set explicitly by the user via `/journal`. Don't infer it.
+
+---
+
+## Reference Repo File Index (copy these verbatim)
+
+| Path in `claude-obsidian` | Where it goes in `timeline` |
+|---|---|
+| `.claude/skills/wiki/` | `.claude/skills/wiki/` |
+| `.claude/skills/wiki-ingest/` | `.claude/skills/wiki-ingest/` |
+| `.claude/skills/wiki-query/` | `.claude/skills/wiki-query/` |
+| `.claude/skills/wiki-lint/` | `.claude/skills/wiki-lint/` |
+| `.claude/skills/save/` | `.claude/skills/save/` |
+| `.claude/skills/autoresearch/` | `.claude/skills/autoresearch/` |
+| `.claude/skills/canvas/` | `.claude/skills/canvas/` |
+| `.claude/skills/defuddle/` | `.claude/skills/defuddle/` |
+| `.claude/skills/obsidian-markdown/` | `.claude/skills/obsidian-markdown/` |
+| `.claude/skills/obsidian-bases/` | `.claude/skills/obsidian-bases/` |
+| `.claude/hooks/hooks.json` | `.claude/hooks/hooks.json` (then add the DailyAutoingest entry) |
+| `.claude/commands/{wiki,save,autoresearch,canvas}.md` | `.claude/commands/` |
+| `.claude/agents/{wiki-ingest,wiki-lint}.md` | `.claude/agents/` |
+| `_templates/{source,concept,entity,comparison,question}.md` | `_templates/` |
+| `wiki/{index,hot,log,overview}.md` | `wiki/` (use as format reference; rewrite content for the new vault) |
+| `wiki/{concepts,entities,sources}/_index.md` | `wiki/` (same — format reference) |
+| `wiki/meta/dashboard.{md,base}` | `wiki/meta/` (format reference for Bases) |
+| `.obsidian/snippets/vault-colors.css` | `.obsidian/snippets/vault-colors.css` (custom callout styles, used by `[!key-insight]`, `[!contradiction]`, `[!gap]`, `[!stale]`) |
+
+That's everything. Start at Phase 1.

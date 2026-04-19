@@ -1,0 +1,1 @@
+/Users/callumke/Projects/calsuite/scripts/hooks/eslint-check.cjs

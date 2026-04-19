@@ -16,16 +16,11 @@ PR_NUMBER=$(gh pr view --json number --jq '.number' 2>/dev/null)
 **If either fails or is empty:** Skip Greptile triage silently. This integration is additive — the workflow works without it.
 
 ```bash
-# Use unique temp files to avoid race conditions across concurrent runs.
-LINE_TMP=$(mktemp)
-TOP_TMP=$(mktemp)
-trap 'rm -f "$LINE_TMP" "$TOP_TMP"' EXIT
-
 # Fetch line-level review comments AND top-level PR comments in parallel
 gh api repos/$REPO/pulls/$PR_NUMBER/comments \
-  --jq '.[] | select(.user.login == "greptile-apps[bot]") | select(.position != null) | {id: .id, path: .path, line: .line, body: .body, html_url: .html_url, source: "line-level"}' > "$LINE_TMP" &
+  --jq '.[] | select(.user.login == "greptile-apps[bot]") | select(.position != null) | {id: .id, path: .path, line: .line, body: .body, html_url: .html_url, source: "line-level"}' > /tmp/greptile_line.json &
 gh api repos/$REPO/issues/$PR_NUMBER/comments \
-  --jq '.[] | select(.user.login == "greptile-apps[bot]") | {id: .id, body: .body, html_url: .html_url, source: "top-level"}' > "$TOP_TMP" &
+  --jq '.[] | select(.user.login == "greptile-apps[bot]") | {id: .id, body: .body, html_url: .html_url, source: "top-level"}' > /tmp/greptile_top.json &
 wait
 ```
 
@@ -39,7 +34,7 @@ The `position != null` filter on line-level comments automatically skips outdate
 
 Derive the project-specific history path:
 ```bash
-REMOTE_SLUG=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null | sed 's|/|__|g')
+REMOTE_SLUG=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null | tr '/' '__')
 if [ -z "$REMOTE_SLUG" ]; then
   REMOTE_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
 fi
@@ -191,7 +186,7 @@ When classifying comments, also assess whether Greptile's implied severity match
 
 Before writing, ensure directories exist:
 ```bash
-REMOTE_SLUG=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null | sed 's|/|__|g')
+REMOTE_SLUG=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null | tr '/' '__')
 if [ -z "$REMOTE_SLUG" ]; then
   REMOTE_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
 fi

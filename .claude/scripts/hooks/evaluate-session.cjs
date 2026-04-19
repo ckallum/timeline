@@ -1,0 +1,1 @@
+/Users/callumke/Projects/calsuite/scripts/hooks/evaluate-session.cjs
