@@ -32,7 +32,7 @@ If the config file doesn't exist, create it with the default (see below).
 3. **For each new item**, dispatch to the appropriate handler:
 
    ### folder handler
-   - Walk all files in the configured path
+   - Walk all files in the configured path (recursively if `recursive: true`). Filter by `match` glob and `exclude` folder list if set.
    - For each unprocessed file: copy to `.raw/`, then run wiki-ingest single-source flow
    - Handle any file type: .md files are ingested as sources, images via vision flow, URLs extracted from .md files are fetched as child pages
    
