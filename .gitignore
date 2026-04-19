@@ -33,6 +33,9 @@ timeline/node_modules/
 # Excalidraw main.js is 8MB — download via setup script if needed
 .obsidian/plugins/obsidian-excalidraw-plugin/main.js
 
+# TypeScript build artifacts
+timeline/tsconfig.tsbuildinfo
+
 # standard noise
 .DS_Store
 *.log

@@ -71,13 +71,13 @@ command -v "$ADVERSARY_CLI" >/dev/null 2>&1 || {
   exit 1
 }
 
-# Build model flag as an array to avoid word-splitting / injection.
-MODEL_FLAG=()
+# Build model flag
+MODEL_FLAG=""
 if [ -n "$ADVERSARY_MODEL" ]; then
   case "$ADVERSARY_CLI" in
-    codex)  MODEL_FLAG=(-m "$ADVERSARY_MODEL") ;;
-    gemini) MODEL_FLAG=(-m "$ADVERSARY_MODEL") ;;
-    claude) MODEL_FLAG=(--model "$ADVERSARY_MODEL") ;;
+    codex)  MODEL_FLAG="-m $ADVERSARY_MODEL" ;;
+    gemini) MODEL_FLAG="-m $ADVERSARY_MODEL" ;;
+    claude) MODEL_FLAG="--model $ADVERSARY_MODEL" ;;
   esac
 fi
 ```
@@ -91,9 +91,9 @@ Use the appropriate invocation per CLI. All three execution phases use this patt
 run_adversary() {
   local outfile="$1"
   case "$ADVERSARY_CLI" in
-    codex)  codex exec "${MODEL_FLAG[@]}" -o "$outfile" - ;;
-    gemini) gemini "${MODEL_FLAG[@]}" -p "$(cat -)" > "$outfile" ;;
-    claude) claude "${MODEL_FLAG[@]}" --print "$(cat -)" > "$outfile" ;;
+    codex)  codex exec $MODEL_FLAG -o "$outfile" - ;;
+    gemini) gemini $MODEL_FLAG -p "$(cat -)" > "$outfile" ;;
+    claude) claude $MODEL_FLAG --print "$(cat -)" > "$outfile" ;;
   esac
 }
 ```
@@ -136,11 +136,9 @@ PROMPT_EOF
 ADVERSARY_PID=$!
 ```
 
-**1c. Run Claude's review (analysis only — Steps 1-4):**
+**1c. Run Claude's review (Steps 1-5 as normal):**
 
-While the adversary runs in the background, proceed with the analysis phases of the Claude review workflow (Steps 1 through 4). Collect all findings into `CLAUDE_FINDINGS`.
-
-**In converse mode, do NOT execute Step 5** — no `AskUserQuestion`, no PR comments, no review-stamp writing during the initial pass. Those side effects belong only to the final consensus report (Phase 4/5). Running them here would duplicate outputs and surface non-consensus findings to the user.
+While the adversary runs in the background, proceed with the full Claude review workflow (Steps 1 through 5). Collect all findings into `CLAUDE_FINDINGS`.
 
 **1d. Wait for the adversary to finish:**
 
@@ -264,7 +262,7 @@ Clean up temp directory:
 rm -rf "$CONVERSE_TMPDIR"
 ```
 
-**Then STOP.** Do not proceed to Step 7 — the converse report replaces the normal summary.
+**Then STOP.** Do not proceed to Step 7/8 — the converse report replaces the normal summary.
 
 ---
 
@@ -297,7 +295,7 @@ Read `.claude/skills/review/checklist.md`.
 Only run this step if:
 - `$ARGUMENTS` contains "greptile", OR
 - A file exists at `$HOME/.claude/review/projects/$REMOTE_SLUG/greptile-history.md` for this repo
-  (derive `REMOTE_SLUG` from `gh repo view --json nameWithOwner --jq '.nameWithOwner' | sed 's|/|__|g'` — `tr` can only map to a single character, so use `sed` to produce `owner__repo`)
+  (derive `REMOTE_SLUG` from `gh repo view --json nameWithOwner --jq '.nameWithOwner' | tr '/' '__'`)
 
 Read `.claude/skills/review/greptile-triage.md` and follow the fetch, filter, classify, and escalation detection steps.
 
@@ -587,9 +585,7 @@ If no TODO file exists, skip silently.
 
 ## Step 6: Write Review Stamp
 
-**Skip this step entirely in PR mode (`/review pr <number>`)** — the review stamp hashes `git diff --cached` which is meaningless when reviewing a remote PR diff. The stamp is a local-branch-review gate only.
-
-**If no unresolved CRITICAL findings** (all resolved as B/C, or none existed) AND not in PR mode:
+**If no unresolved CRITICAL findings** (all resolved as B/C, or none existed):
 
 Compute the diff hash and write the review stamp:
 
@@ -638,7 +634,7 @@ Review complete: BLOCKED | N critical issues need resolution
 
 ## Gotchas
 
-- **REMOTE_SLUG uses `sed 's|/|__|g'`** to preserve the owner in the path (e.g., `owner__repo`). `tr` can only map to a single character, so don't use `tr '/' '__'` — that produces `owner_repo`. Don't use just the repo name either.
+- **REMOTE_SLUG uses `tr '/' '__'`** to preserve the owner in the path (e.g., `owner__repo`). Don't use just the repo name.
 - **Greptile auto-detect is repo-scoped, not wildcard.** The history file path includes the full `REMOTE_SLUG`, so it only activates for repos that have been triaged before.
 - **The review stamp hashes `git diff --cached`** (staged changes only). If you stage/unstage files after the stamp, the review gate will see a mismatch. Stage everything before running `/review`.
 - **If the checklist file is missing**, the skill stops early. Run `/configure-claude` to install it.
