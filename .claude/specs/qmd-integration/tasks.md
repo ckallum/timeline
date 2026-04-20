@@ -48,6 +48,21 @@
 - [ ] End-to-end: /superhuman query returns QMD-ranked results with citations *(requires session restart)*
 - [x] Graceful degradation path: with qmd daemon stopped, viewer shows "QMD server unavailable" message (verified during first preview run before install)
 
+## Follow-up issues swept and resolved in PR #7
+
+- [x] #8 Search.tsx: unknown QMD response shape renders as zero results → explicit error branch + console.error on unknown shape
+- [x] #9 Search.tsx: debounce race can overwrite newer results → AbortController, ignore AbortError
+- [x] #10 serve-timeline.sh: no health check / log interleave / no graceful shutdown → port poll with up to 5s timeout, `.claude/logs/qmd-mcp.log` redirect, `kill -TERM && wait`
+- [x] #11 setup-qmd.sh: blanket `|| true` hides real errors, PATH not re-verified → `safe_add` helper that only swallows "already exists"/"duplicate"; re-check `command -v qmd` after npm install
+- [x] #12 viewer search-navigate doesn't respect pagination invariant → `jumpToDate` added to `useTimelineData`; Timeline.tsx consumes `dateScrollTarget` and uses a `pendingSelectRef` to open the detail panel once the day enters the loaded window
+- [x] #13 (partial) CLAUDE.md note about shared qmd default index — upstream filing at tobi/qmd still pending
+
+## Docs updates shipped with this PR
+
+- [x] README.md: new `/layman` section at top, QMD setup step, search-via-three-entry-points section, auto-reindex, known limitations
+- [x] CLAUDE.md: QMD Search section explaining the shared-default-index workaround
+- [x] .claude/skills/timeline/SKILL.md: documents `scripts/serve-timeline.sh` as the preferred way to run the viewer with search
+
 ## Deviations from design.md
 
 1. **QMD has no `--db` flag**: qmd 2.1.0 stores all indexes at `~/.cache/qmd/<name>.sqlite` (global user cache) and accepts only `--index <name>` for namespacing. The design's vault-local `.qmd/index.sqlite` isn't supported. Consequence: removed `.qmd/` from `.gitignore`; the index lives in the user cache.
