@@ -4,6 +4,7 @@ import DetailPanel from './DetailPanel';
 import YearNav from './YearNav';
 import EmptyState from './EmptyState';
 import Spinner from './Spinner';
+import Search from './Search';
 import { useTimelineData } from '../hooks/useTimelineData';
 import type { DayEntry } from '../types';
 import { dayGap, formatMonthYear, getYear } from '../lib/format';
@@ -12,6 +13,23 @@ export default function Timeline() {
   const { visibleDays, loading, error, hasMore, loadMore, jumpToYear, years, scrollTarget, clearScrollTarget } = useTimelineData();
   const [selectedDay, setSelectedDay] = useState<DayEntry | null>(null);
   const observerRef = useRef<IntersectionObserver>(undefined);
+
+  const handleSearchNavigate = useCallback((date: string) => {
+    const match = visibleDays.find(d => d.date === date);
+    if (match) {
+      setSelectedDay(match);
+      requestAnimationFrame(() => {
+        document.querySelector(`[data-date="${date}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      return;
+    }
+    // Date exists in the vault but isn't in the loaded infinite-scroll window yet.
+    // Fall through to Obsidian rather than silently no-op.
+    const year = date.slice(0, 4);
+    const month = date.slice(5, 7);
+    const path = `journal/${year}/${month}/${date}.md`;
+    window.open(`obsidian://open?path=${encodeURIComponent(path)}`, '_blank');
+  }, [visibleDays]);
 
   const sentinelRef = useCallback((node: HTMLDivElement | null) => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -82,6 +100,7 @@ export default function Timeline() {
 
   return (
     <div className="relative">
+      <Search onNavigate={handleSearchNavigate} />
       <YearNav years={years} onJump={jumpToYear} collapsed={collapsed} />
 
       {stickyHeader && !collapsed && (

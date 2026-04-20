@@ -15,6 +15,14 @@ export default defineConfig({
     fs: {
       allow: ['.'],
     },
+    // Proxy QMD HTTP search to avoid CORS (qmd 2.1.0 does not emit CORS headers).
+    proxy: {
+      '/api/qmd': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/qmd/, ''),
+      },
+    },
   },
   preview: {
     port: 4173,
