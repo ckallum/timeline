@@ -10,25 +10,49 @@ import type { DayEntry } from '../types';
 import { dayGap, formatMonthYear, getYear } from '../lib/format';
 
 export default function Timeline() {
-  const { visibleDays, loading, error, hasMore, loadMore, jumpToYear, years, scrollTarget, clearScrollTarget } = useTimelineData();
+  const {
+    visibleDays,
+    loading,
+    error,
+    hasMore,
+    loadMore,
+    jumpToYear,
+    jumpToDate,
+    years,
+    scrollTarget,
+    clearScrollTarget,
+    dateScrollTarget,
+    clearDateScrollTarget,
+  } = useTimelineData();
   const [selectedDay, setSelectedDay] = useState<DayEntry | null>(null);
   const observerRef = useRef<IntersectionObserver>(undefined);
+  const pendingSelectRef = useRef<string | null>(null);
 
   const handleSearchNavigate = useCallback((date: string) => {
-    const match = visibleDays.find(d => d.date === date);
-    if (match) {
-      setSelectedDay(match);
-      requestAnimationFrame(() => {
-        document.querySelector(`[data-date="${date}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
+    // Page-jump via jumpToDate if the date is in the vault but outside the
+    // loaded window. selectedDay is set in a follow-up effect once the day
+    // appears in visibleDays (after the page bump flushes).
+    if (jumpToDate(date)) {
+      pendingSelectRef.current = date;
       return;
     }
-    // Date exists in the vault but isn't in the loaded infinite-scroll window yet.
+    // Date not in the vault at all (wiki/raw-source result, or stale index).
     // Fall through to Obsidian rather than silently no-op.
     const year = date.slice(0, 4);
     const month = date.slice(5, 7);
     const path = `journal/${year}/${month}/${date}.md`;
     window.open(`obsidian://open?path=${encodeURIComponent(path)}`, '_blank');
+  }, [jumpToDate]);
+
+  // Once the target day is in visibleDays, open the detail panel for it.
+  useEffect(() => {
+    const pending = pendingSelectRef.current;
+    if (!pending) return;
+    const match = visibleDays.find(d => d.date === pending);
+    if (match) {
+      setSelectedDay(match);
+      pendingSelectRef.current = null;
+    }
   }, [visibleDays]);
 
   const sentinelRef = useCallback((node: HTMLDivElement | null) => {
@@ -75,6 +99,17 @@ export default function Timeline() {
       clearScrollTarget();
     });
   }, [scrollTarget, clearScrollTarget]);
+
+  // Handle scroll-to-date requests (search result navigation). Uses the same
+  // pattern as scrollTarget but keys on data-date and uses 'center' alignment.
+  useEffect(() => {
+    if (dateScrollTarget == null) return;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-date="${dateScrollTarget}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      clearDateScrollTarget();
+    });
+  }, [dateScrollTarget, clearDateScrollTarget]);
 
   const collapsed = selectedDay !== null;
 

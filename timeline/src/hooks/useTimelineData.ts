@@ -10,6 +10,7 @@ export function useTimelineData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scrollTarget, setScrollTarget] = useState<number | null>(null);
+  const [dateScrollTarget, setDateScrollTarget] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('./data/timeline.json')
@@ -48,12 +49,37 @@ export function useTimelineData() {
     setScrollTarget(year);
   }, [allDays]);
 
+  // Mirrors jumpToYear but for a specific day. Returns true if the date is in
+  // the vault (caller can fall through to a different handler when false).
+  const jumpToDate = useCallback((date: string) => {
+    const idx = allDays.findIndex(d => d.date === date);
+    if (idx === -1) return false;
+    const needed = Math.ceil((idx + 1) / PAGE_SIZE);
+    setPage(p => Math.max(p, needed));
+    setDateScrollTarget(date);
+    return true;
+  }, [allDays]);
+
   const years = useMemo(
     () => [...new Set(allDays.map(d => getYear(d.date)).filter(y => y > 0))].sort((a, b) => b - a),
     [allDays],
   );
 
   const clearScrollTarget = useCallback(() => setScrollTarget(null), []);
+  const clearDateScrollTarget = useCallback(() => setDateScrollTarget(null), []);
 
-  return { visibleDays, loading, error, hasMore, loadMore, jumpToYear, years, scrollTarget, clearScrollTarget };
+  return {
+    visibleDays,
+    loading,
+    error,
+    hasMore,
+    loadMore,
+    jumpToYear,
+    jumpToDate,
+    years,
+    scrollTarget,
+    clearScrollTarget,
+    dateScrollTarget,
+    clearDateScrollTarget,
+  };
 }
