@@ -73,6 +73,8 @@ If the config file doesn't exist, create it with the default (see below).
 
 7. **Trigger timeline rebuild**: run `npx tsx scripts/build-timeline-data.ts` (if script exists).
 
+8. **Reindex QMD**: if `qmd` is installed (`command -v qmd`), run `qmd update && qmd embed`. No-op when QMD is unavailable — graceful degradation.
+
 ## Error Handling (decision 11)
 
 - On per-item failure: log error, mark in manifest as `{status: "failed", error: "..."}`, continue to next item

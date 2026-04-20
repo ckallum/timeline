@@ -136,6 +136,7 @@ Steps:
     - Key insight: One sentence on what is new.
     ```
 11. **Check for contradictions.** If new info conflicts with existing pages, add `> [!contradiction]` callouts on both pages.
+12. **Reindex QMD**: if `qmd` is installed (`command -v qmd`), run `qmd update && qmd embed`. No-op when QMD is unavailable — graceful degradation.
 
 ---
 

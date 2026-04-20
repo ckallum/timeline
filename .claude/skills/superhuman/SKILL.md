@@ -27,9 +27,12 @@ The "superhuman version of yourself with infinite memory" entry point. Searches 
 3. **Search strategy**:
    - Start with `wiki/hot.md` for recent context
    - Read `wiki/index.md` for the full page list
-   - Grep across all directories for the query terms
+   - **QMD hybrid search** (BM25 + vector, all collections):
+     - Availability check: `qmd status 2>/dev/null && echo qmd_available || echo qmd_unavailable`
+     - If `qmd_available`: run `qmd query --json -n 15 "<query>"`. Results span wiki + journal + inbox + .raw/articles.
+     - If `qmd_unavailable`: fall back to grep across all directories (existing behavior).
    - Read the most relevant files (up to 10)
-   
+
 4. **LLM-rank results by relevance** (decision 21):
    - After gathering all matching content, rank the results by how relevant they are to the query
    - This costs one LLM reasoning step — it's the "superhuman" part
