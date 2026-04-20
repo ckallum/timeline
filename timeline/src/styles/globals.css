@@ -4,19 +4,33 @@
 
 @layer base {
   :root {
-    --spine-width: 2px;
+    --spine-width: 1px;
     --dot-size: 14px;
     --dot-size-lg: 18px;
     --transition-speed: 300ms;
   }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  html {
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
   }
 
-  /* Scrollbar styling */
+  body {
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'ss02', 'cv01';
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.08), transparent),
+      radial-gradient(ellipse 60% 50% at 80% 110%, rgba(56, 189, 248, 0.05), transparent);
+    background-attachment: fixed;
+  }
+
+  .font-display {
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 50, 'WONK' 0;
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -25,29 +39,88 @@
     background: rgb(63 63 70);
     border-radius: 3px;
   }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(82 82 91);
+  }
 }
 
 @layer components {
   .timeline-spine {
-    @apply absolute left-1/2 top-0 bottom-0 w-[2px] bg-zinc-800 -translate-x-1/2;
+    @apply absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-zinc-800 to-transparent -translate-x-1/2;
   }
 
   .timeline-spine-collapsed {
-    @apply absolute right-[15%] top-0 bottom-0 w-[2px] bg-zinc-800;
+    @apply absolute right-[15%] top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-zinc-800 to-transparent;
   }
 
   .day-card {
-    @apply relative bg-zinc-900 border border-zinc-800 rounded-lg p-4 max-w-md
-           transition-all duration-300 ease-out hover:border-zinc-600 hover:bg-zinc-900/80
-           cursor-pointer;
+    @apply relative border rounded-xl p-5 max-w-md cursor-pointer
+           transition-all duration-300 ease-out
+           backdrop-blur-sm
+           hover:border-zinc-600/80 hover:-translate-y-0.5;
+    background: linear-gradient(180deg, rgba(24, 24, 27, 0.6) 0%, rgba(9, 9, 11, 0.8) 100%);
+  }
+
+  .day-card:hover {
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.02);
+  }
+
+  .day-card-selected {
+    @apply border-zinc-500;
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
   }
 
   .detail-panel {
-    @apply fixed top-0 left-0 h-full overflow-y-auto bg-zinc-950 border-r border-zinc-800
+    @apply fixed top-0 left-0 h-full overflow-y-auto bg-zinc-950/95 backdrop-blur-md
+           border-r border-zinc-800/60
            transition-all duration-300 ease-out;
+    background-image:
+      radial-gradient(ellipse 60% 40% at 0% 0%, rgba(120, 119, 198, 0.06), transparent);
   }
 
   .gap-marker {
-    @apply text-zinc-600 text-sm italic text-center py-4;
+    @apply text-zinc-600 font-mono text-xs tracking-widest uppercase text-center py-6 flex items-center justify-center gap-3;
+  }
+
+  .gap-marker::before,
+  .gap-marker::after {
+    content: '';
+    @apply h-px bg-zinc-800 flex-1 max-w-16;
+  }
+
+  .eyebrow {
+    @apply font-mono text-[10px] uppercase tracking-eyebrow text-zinc-500;
+  }
+
+  .stat-pill {
+    @apply flex items-baseline gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900/60 border border-zinc-800/60;
+  }
+
+  .stat-pill-num {
+    @apply font-mono font-medium tabular-nums text-zinc-200 text-xs;
+  }
+
+  .stat-pill-label {
+    @apply text-[10px] text-zinc-500 uppercase tracking-wider;
+  }
+
+  .hairline {
+    @apply h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent;
+  }
+
+  .back-button {
+    @apply inline-flex items-center gap-2 text-xs font-mono uppercase tracking-eyebrow
+           text-zinc-400 hover:text-zinc-100
+           px-3 py-2 rounded-md border border-zinc-800 hover:border-zinc-600
+           bg-zinc-900/50 hover:bg-zinc-900
+           transition-all duration-200;
+  }
+
+  .back-button:hover .back-arrow {
+    transform: translateX(-2px);
+  }
+
+  .back-arrow {
+    @apply transition-transform duration-200;
   }
 }
