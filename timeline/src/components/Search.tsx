@@ -60,13 +60,21 @@ export default function Search({ onNavigate }: SearchProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'unavailable'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const abortRef = useRef<AbortController | null>(null);
 
   const runSearch = useCallback(async (q: string) => {
+    // Cancel any in-flight request before starting a new one so stale responses
+    // can't overwrite the newest query's results.
+    abortRef.current?.abort();
+
     if (!q.trim()) {
       setResults([]);
       setStatus('idle');
       return;
     }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
     setStatus('loading');
     try {
       const res = await fetch(QMD_URL, {
@@ -79,13 +87,31 @@ export default function Search({ onNavigate }: SearchProps) {
           ],
           limit: 10,
         }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error(`QMD returned ${res.status}`);
       const data = await res.json();
-      const hits: SearchResult[] = Array.isArray(data) ? data : (data.results ?? data.hits ?? []);
+
+      // Detect the "none of the expected shapes matched" case explicitly —
+      // otherwise an upstream shape change silently renders as zero results.
+      let hits: SearchResult[];
+      if (Array.isArray(data)) hits = data;
+      else if (Array.isArray(data?.results)) hits = data.results;
+      else if (Array.isArray(data?.hits)) hits = data.hits;
+      else {
+        console.error('[search] unknown QMD response shape:', data);
+        setStatus('error');
+        setErrorMsg('Unknown QMD response shape — index may need rebuilding');
+        setResults([]);
+        return;
+      }
+
       setResults(hits);
       setStatus('idle');
     } catch (err) {
+      // Aborts are expected (user typed another character) — not an error.
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+
       // Discriminate by error type, not message string:
       //  - TypeError from fetch() = network down / CORS / server not listening
       //  - SyntaxError from res.json() = malformed response (version mismatch?)
