@@ -116,14 +116,23 @@ export default function Search({ onNavigate }: SearchProps) {
       }
 
       // Validate each hit has a usable path so clicks don't open broken URIs.
-      // Drop malformed hits silently but report if the whole response is bad.
-      const hits = (rawHits as unknown[]).filter(isRenderable);
-      if (hits.length === 0 && (rawHits as unknown[]).length > 0) {
+      // Drop malformed hits silently but warn + error as appropriate.
+      const rawArr = rawHits as unknown[];
+      const hits = rawArr.filter(isRenderable);
+      if (hits.length === 0 && rawArr.length > 0) {
         console.error('[search] all QMD hits missing file/path:', rawHits);
         setStatus('error');
         setErrorMsg('QMD returned results without file paths');
         setResults([]);
         return;
+      }
+      if (hits.length < rawArr.length) {
+        // Partial drop — some hits rendered, some dropped. Log so upstream
+        // schema drift is visible in devtools without failing the whole query.
+        console.warn(
+          `[search] dropped ${rawArr.length - hits.length} hit(s) missing file/path`,
+          rawHits,
+        );
       }
 
       setResults(hits);
