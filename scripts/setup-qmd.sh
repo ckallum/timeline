@@ -25,7 +25,9 @@ safe_add() {
   local out
   if out=$("$@" 2>&1); then
     echo "  added: $label"
-  elif echo "$out" | grep -qiE "already exists|duplicate"; then
+  # Anchor the "already exists" pattern so it can't eat unrelated errors
+  # like "parent directory already exists but is not a vault".
+  elif echo "$out" | grep -qiE "^(collection|context)[^:]*:?[[:space:]]+(already exists|is a duplicate|duplicate entry)"; then
     echo "  exists: $label"
   else
     echo "  FAILED: $label" >&2
@@ -57,4 +59,16 @@ qmd embed
 
 echo ""
 echo "QMD setup complete."
-qmd status | grep -E "^(Index:|  Total:|  Vectors:)" || true
+# Capture status and both check the CLI exit code and surface the summary lines.
+# Earlier version used `qmd status | grep ... || true` which swallowed a
+# non-zero `qmd status` (e.g. corrupt index, empty DB) because the pipe's
+# exit code came from grep.
+if ! status_out=$(qmd status); then
+  echo "WARNING: qmd status exited non-zero. Output:" >&2
+  echo "$status_out" >&2
+  exit 1
+fi
+echo "$status_out" | grep -E "^(Index:|  Total:|  Vectors:)" || {
+  echo "WARNING: qmd status did not report expected fields. Raw output:" >&2
+  echo "$status_out" >&2
+}

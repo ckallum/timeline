@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback, Fragment } from 'react';
 
 // In dev we proxy through Vite (/api/qmd → localhost:3001) to avoid CORS.
-// In production, either serve the viewer from the same origin as qmd or set
-// this to an absolute URL — qmd 2.1.0 does not emit CORS headers.
-const QMD_URL = '/api/qmd/query';
+// In production, override via VITE_QMD_URL in .env.local (same-origin or a
+// reachable absolute URL) — qmd 2.1.0 does not emit CORS headers itself.
+const QMD_URL = import.meta.env.VITE_QMD_URL ?? '/api/qmd/query';
 
 interface SearchResult {
   docid?: string;
@@ -28,8 +28,12 @@ function isRenderable(hit: unknown): hit is SearchResult {
       || (typeof r.path === 'string' && r.path.length > 0);
 }
 
+// Assumes the hit has already passed isRenderable — empty-string fallback
+// here would mean a broken obsidian:// URI, so we want loud failure not quiet
+// at render time. The non-null assertion is safe because every hit in state
+// has been filtered through isRenderable in runSearch.
 function resultPath(result: SearchResult): string {
-  return result.file ?? result.path ?? '';
+  return (result.file ?? result.path) as string;
 }
 
 function deriveTitle(result: SearchResult): string {
@@ -146,15 +150,19 @@ export default function Search({ onNavigate }: SearchProps) {
       //  - SyntaxError from res.json() = malformed response (version mismatch?)
       //  - anything else = logic error or non-2xx we threw ourselves
       console.error('[search] query failed:', err);
+      const detail = err instanceof Error ? err.message : String(err);
       if (err instanceof TypeError) {
+        // Most common cause is server unreachable (network, wrong proxy target,
+        // port not bound), but browser extensions and malformed URLs also surface
+        // as TypeError — include the raw message so devtools isn't the only clue.
         setStatus('unavailable');
-        setErrorMsg('Cannot reach QMD server on :3001');
+        setErrorMsg(`QMD unavailable on ${QMD_URL} — ${detail}`);
       } else if (err instanceof SyntaxError) {
         setStatus('error');
-        setErrorMsg('QMD returned malformed JSON');
+        setErrorMsg(`QMD returned malformed JSON — ${detail}`);
       } else {
         setStatus('error');
-        setErrorMsg(err instanceof Error ? err.message : String(err));
+        setErrorMsg(detail);
       }
       setResults([]);
     }

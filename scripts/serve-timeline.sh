@@ -27,12 +27,28 @@ trap cleanup EXIT
 
 if command -v qmd >/dev/null 2>&1; then
   mkdir -p "$LOG_DIR"
-  qmd mcp --http --port 3001 >"$QMD_LOG" 2>&1 &
+
+  # Pre-check port 3001: a stale qmd from another project (the shared-default-
+  # index workaround makes this plausible) would otherwise cause our curl
+  # probe to succeed against someone else's server. Bail if already bound.
+  if command -v lsof >/dev/null 2>&1 && lsof -i :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "port 3001 is already in use. Stop the existing server (qmd mcp stop, or kill the process)." >&2
+    exit 1
+  fi
+
+  # Append to the log with a run marker so crash history is retained.
+  {
+    echo ""
+    echo "=== qmd mcp start: $(date -Iseconds) ==="
+  } >> "$QMD_LOG"
+  qmd mcp --http --port 3001 >>"$QMD_LOG" 2>&1 &
   QMD_PID=$!
 
-  # Poll the port for up to 5s so the "server started" message isn't a lie.
+  # On a fresh machine qmd's first run downloads ~2 GB of models before
+  # binding the port. 5s was nowhere near enough — user saw Vite up but
+  # search dead with the warning scrolled offscreen. Give 60s.
   ready=0
-  for _ in $(seq 1 50); do
+  for _ in $(seq 1 600); do
     if ! kill -0 "$QMD_PID" 2>/dev/null; then
       echo "qmd mcp exited during startup; see $QMD_LOG" >&2
       QMD_PID=""
@@ -52,7 +68,7 @@ if command -v qmd >/dev/null 2>&1; then
   if [ "$ready" = "1" ]; then
     echo "QMD HTTP server live on :3001 (pid $QMD_PID, log: $QMD_LOG)"
   elif [ -n "$QMD_PID" ]; then
-    echo "qmd started but /query did not respond within 5s; viewer search may be unavailable (log: $QMD_LOG)" >&2
+    echo "qmd started but /query did not respond within 60s; viewer search may be unavailable. If this is a fresh install, models may still be downloading (see $QMD_LOG)." >&2
   fi
 else
   echo "qmd not installed; viewer search will be unavailable. Run scripts/setup-qmd.sh to enable."

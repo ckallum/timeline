@@ -40,7 +40,7 @@
           },
           {
             "type": "command",
-            "command": "command -v qmd >/dev/null && qmd update 2>/dev/null || true"
+            "command": "command -v qmd >/dev/null && { mkdir -p .claude/logs; (qmd update >> .claude/logs/qmd-hook.log 2>&1 &) } || true"
           }
         ]
       }

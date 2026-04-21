@@ -40,3 +40,9 @@ timeline/tsconfig.tsbuildinfo
 .DS_Store
 *.log
 node_modules/
+
+# calsuite (personal harness) — never commit
+.claude/settings.local.json
+
+# QMD server + hook logs (written by scripts/serve-timeline.sh and PostToolUse hook)
+.claude/logs/

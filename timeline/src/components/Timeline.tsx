@@ -28,6 +28,22 @@ export default function Timeline() {
   const observerRef = useRef<IntersectionObserver>(undefined);
   const pendingSelectRef = useRef<string | null>(null);
 
+  // Close the detail panel AND drop any queued search-select. Without this,
+  // a user who clicks a search result, changes their mind, and dismisses the
+  // panel would see it pop back open when visibleDays next changes (e.g. on
+  // scroll-triggered loadMore) because pendingSelectRef was still set.
+  const closeDetail = useCallback(() => {
+    setSelectedDay(null);
+    pendingSelectRef.current = null;
+  }, []);
+
+  // Same reasoning: clicking a year in YearNav should invalidate any pending
+  // search-select so the old day's panel doesn't pop open after the page bump.
+  const handleJumpToYear = useCallback((year: number) => {
+    pendingSelectRef.current = null;
+    jumpToYear(year);
+  }, [jumpToYear]);
+
   const handleSearchNavigate = useCallback((date: string) => {
     if (jumpToDate(date)) {
       // If the day is already in visibleDays, select it immediately — otherwise
@@ -144,7 +160,7 @@ export default function Timeline() {
   return (
     <div className="relative">
       <Search onNavigate={handleSearchNavigate} />
-      <YearNav years={years} onJump={jumpToYear} collapsed={collapsed} />
+      <YearNav years={years} onJump={handleJumpToYear} collapsed={collapsed} />
 
       {stickyHeader && !collapsed && (
         <div className="fixed top-0 left-0 right-0 z-20 bg-zinc-950/90 backdrop-blur-sm border-b border-zinc-800/50 py-2 px-4 text-center">
@@ -152,7 +168,7 @@ export default function Timeline() {
         </div>
       )}
 
-      <DetailPanel day={selectedDay} onClose={() => setSelectedDay(null)} />
+      <DetailPanel day={selectedDay} onClose={closeDetail} />
 
       <div
         className={`relative transition-all duration-300 ease-out ${collapsed ? 'ml-[70%]' : 'mx-auto max-w-5xl'} pt-12 pb-24 px-4`}
