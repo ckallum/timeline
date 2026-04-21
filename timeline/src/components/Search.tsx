@@ -7,7 +7,7 @@ const QMD_URL = '/api/qmd/query';
 
 interface SearchResult {
   docid?: string;
-  file: string;
+  file?: string;
   path?: string;
   title?: string;
   snippet?: string;
@@ -17,6 +17,15 @@ interface SearchResult {
 
 interface SearchProps {
   onNavigate?: (path: string) => void;
+}
+
+// A hit is only renderable if it has a non-empty file or path — otherwise
+// clicks would open a broken obsidian://open?path= URI.
+function isRenderable(hit: unknown): hit is SearchResult {
+  if (!hit || typeof hit !== 'object') return false;
+  const r = hit as SearchResult;
+  return (typeof r.file === 'string' && r.file.length > 0)
+      || (typeof r.path === 'string' && r.path.length > 0);
 }
 
 function resultPath(result: SearchResult): string {
@@ -94,14 +103,25 @@ export default function Search({ onNavigate }: SearchProps) {
 
       // Detect the "none of the expected shapes matched" case explicitly —
       // otherwise an upstream shape change silently renders as zero results.
-      let hits: SearchResult[];
-      if (Array.isArray(data)) hits = data;
-      else if (Array.isArray(data?.results)) hits = data.results;
-      else if (Array.isArray(data?.hits)) hits = data.hits;
+      let rawHits: unknown;
+      if (Array.isArray(data)) rawHits = data;
+      else if (Array.isArray(data?.results)) rawHits = data.results;
+      else if (Array.isArray(data?.hits)) rawHits = data.hits;
       else {
         console.error('[search] unknown QMD response shape:', data);
         setStatus('error');
         setErrorMsg('Unknown QMD response shape — index may need rebuilding');
+        setResults([]);
+        return;
+      }
+
+      // Validate each hit has a usable path so clicks don't open broken URIs.
+      // Drop malformed hits silently but report if the whole response is bad.
+      const hits = (rawHits as unknown[]).filter(isRenderable);
+      if (hits.length === 0 && (rawHits as unknown[]).length > 0) {
+        console.error('[search] all QMD hits missing file/path:', rawHits);
+        setStatus('error');
+        setErrorMsg('QMD returned results without file paths');
         setResults([]);
         return;
       }

@@ -29,7 +29,7 @@ The "superhuman version of yourself with infinite memory" entry point. Searches 
    - Read `wiki/index.md` for the full page list
    - **QMD hybrid search** (BM25 + vector, all collections):
      - Availability check: `qmd status 2>/dev/null && echo qmd_available || echo qmd_unavailable`
-     - If `qmd_available`: run `qmd query --json -n 15 "<query>"`. Results span wiki + journal + inbox + .raw/articles.
+     - If `qmd_available`: run `qmd query --json -n 15 "<query>"`. Results span wiki + journal + inbox + reminders + .raw/articles (all 5 collections registered by `scripts/setup-qmd.sh`).
      - If `qmd_unavailable`: fall back to grep across all directories (existing behavior).
    - Read the most relevant files (up to 10)
 

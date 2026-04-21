@@ -39,9 +39,9 @@ Do not open individual wiki pages in quick mode.
 
 1. **Read** `wiki/hot.md` first. It may already have the answer or directly relevant context.
 2. **Read** `wiki/index.md` to find the most relevant pages (scan for titles and descriptions).
-3. **QMD search** (hybrid BM25 + vector):
+3. **QMD search** (hybrid BM25 + vector, wiki-scoped):
    - Availability check: `qmd status 2>/dev/null && echo qmd_available || echo qmd_unavailable`
-   - If `qmd_available`: run `qmd query --json -n 10 "<query>"`. Parse results, read the top 3-5 matched pages.
+   - If `qmd_available`: run `qmd query -c wiki --json -n 10 "<query>"`. The `-c wiki` filter scopes results to the wiki collection only — /wiki-query must not leak journal/inbox/reminders/raw-source hits. Parse results, read the top 3-5 matched pages.
    - If `qmd_unavailable`: fall back to grep across `wiki/` to locate candidate pages, then read 3-5.
 4. **Read** those pages. Follow wikilinks to depth-2 for key entities. No deeper.
 5. **Synthesize** the answer in chat. Cite sources with wikilinks: `(Source: [[Page Name]])`.
@@ -56,7 +56,7 @@ Use for synthesis questions, comparisons, or "tell me everything about X."
 
 1. Read `wiki/hot.md` and `wiki/index.md`.
 2. Identify all relevant sections (concepts, entities, sources, comparisons).
-3. **QMD search** (hybrid BM25 + vector): same availability check as Standard. If available, run `qmd query --json -n 25 "<query>"` for broad recall; otherwise fall back to grep across `wiki/`.
+3. **QMD search** (hybrid BM25 + vector): same availability check as Standard. If available, run `qmd query -c wiki --json -n 25 "<query>"` for broad recall, wiki-scoped; otherwise fall back to grep across `wiki/`.
 4. Read every relevant page. No skipping.
 5. If wiki coverage is thin, offer to supplement with web search.
 6. Synthesize a comprehensive answer with full citations.

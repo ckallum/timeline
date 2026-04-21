@@ -10,7 +10,16 @@ QMD_LOG="$LOG_DIR/qmd-mcp.log"
 cleanup() {
   if [ -n "$QMD_PID" ] && kill -0 "$QMD_PID" 2>/dev/null; then
     kill -TERM "$QMD_PID" 2>/dev/null || true
-    # Wait up to 2s for graceful shutdown so qmd can flush its SQLite WAL.
+    # Wait up to 2s for graceful shutdown so qmd can flush its SQLite WAL,
+    # then SIGKILL to guarantee the wrapper exits even if qmd ignores SIGTERM.
+    for _ in $(seq 1 20); do
+      if ! kill -0 "$QMD_PID" 2>/dev/null; then
+        wait "$QMD_PID" 2>/dev/null || true
+        return
+      fi
+      sleep 0.1
+    done
+    kill -KILL "$QMD_PID" 2>/dev/null || true
     wait "$QMD_PID" 2>/dev/null || true
   fi
 }

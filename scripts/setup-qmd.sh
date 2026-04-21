@@ -37,6 +37,7 @@ safe_add() {
 safe_add "collection wiki"        qmd collection add wiki/ --name wiki
 safe_add "collection journal"     qmd collection add journal/ --name journal
 safe_add "collection inbox"       qmd collection add inbox/ --name inbox
+safe_add "collection reminders"   qmd collection add reminders/ --name reminders
 safe_add "collection raw-sources" qmd collection add .raw/articles/ --name raw-sources
 
 safe_add "context wiki"        qmd context add qmd://wiki \
@@ -45,6 +46,8 @@ safe_add "context journal"     qmd context add qmd://journal \
   "Daily timeline entries with activity counts, summaries, and sections for captures, ingests, code, and reminders."
 safe_add "context inbox"       qmd context add qmd://inbox \
   "Quick notes and unprocessed captures. Fragments waiting to be promoted to wiki pages."
+safe_add "context reminders"   qmd context add qmd://reminders \
+  "Active and completed reminders. Natural-language todos with due dates and completion markers."
 safe_add "context raw-sources" qmd context add qmd://raw-sources \
   "Immutable source archive. Ingested articles, git summaries, and iCloud vault copies."
 

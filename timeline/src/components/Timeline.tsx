@@ -29,11 +29,19 @@ export default function Timeline() {
   const pendingSelectRef = useRef<string | null>(null);
 
   const handleSearchNavigate = useCallback((date: string) => {
-    // Page-jump via jumpToDate if the date is in the vault but outside the
-    // loaded window. selectedDay is set in a follow-up effect once the day
-    // appears in visibleDays (after the page bump flushes).
     if (jumpToDate(date)) {
-      pendingSelectRef.current = date;
+      // If the day is already in visibleDays, select it immediately — otherwise
+      // jumpToDate's setPage is a no-op (page is already high enough) and the
+      // follow-up effect (keyed on visibleDays) never fires.
+      const visibleMatch = visibleDays.find(d => d.date === date);
+      if (visibleMatch) {
+        setSelectedDay(visibleMatch);
+        pendingSelectRef.current = null;
+      } else {
+        // Out-of-window: queue the select for the effect to consume once the
+        // page bump flushes and the target day lands in visibleDays.
+        pendingSelectRef.current = date;
+      }
       return;
     }
     // Date not in the vault at all (wiki/raw-source result, or stale index).
@@ -42,7 +50,7 @@ export default function Timeline() {
     const month = date.slice(5, 7);
     const path = `journal/${year}/${month}/${date}.md`;
     window.open(`obsidian://open?path=${encodeURIComponent(path)}`, '_blank');
-  }, [jumpToDate]);
+  }, [jumpToDate, visibleDays]);
 
   // Once the target day is in visibleDays, open the detail panel for it.
   useEffect(() => {

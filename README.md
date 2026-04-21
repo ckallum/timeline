@@ -66,7 +66,7 @@ scripts/        setup-qmd.sh, serve-timeline.sh, build-timeline-data.ts
    ```bash
    bash scripts/setup-qmd.sh
    ```
-   Installs [QMD](https://github.com/tobi/qmd), registers the 4 collections (`wiki`, `journal`, `inbox`, `raw-sources`), and builds the initial FTS5 + vector index. Downloads ~2 GB of GGUF models on first run — one-time cost. Everything runs locally; nothing is uploaded anywhere.
+   Installs [QMD](https://github.com/tobi/qmd), registers the 5 collections (`wiki`, `journal`, `inbox`, `reminders`, `raw-sources`), and builds the initial FTS5 + vector index. Downloads ~2 GB of GGUF models on first run — one-time cost. Everything runs locally; nothing is uploaded anywhere.
 5. Run `/wiki` to verify the vault is healthy
 6. Start the ingest loop: `/loop 24h /autoingest`
 
