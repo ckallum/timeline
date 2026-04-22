@@ -1,1 +1,0 @@
-/Users/callumke/Projects/calsuite/scripts/hooks/pre-compact.cjs

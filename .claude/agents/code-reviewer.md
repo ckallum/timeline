@@ -1,4 +1,5 @@
 ---
+_origin: calsuite@df84fae
 name: code-reviewer
 description: "Reviews staged git changes against CLAUDE.md conventions and codebase patterns. Returns PASS/BLOCKED verdict. Spawn with: @code-reviewer"
 model: sonnet

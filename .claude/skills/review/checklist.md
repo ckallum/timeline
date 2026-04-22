@@ -1,3 +1,7 @@
+---
+_origin: calsuite@38d127f
+---
+
 # Pre-Landing Review Checklist
 
 ## Instructions
@@ -60,6 +64,7 @@ Be terse. For each issue: one line describing the problem, one line with the fix
 #### Conditional Side Effects
 - Code paths that branch on a condition but forget to apply a side effect on one branch (e.g., status updated but related field only set in one branch — creating inconsistent state)
 - Log messages that claim an action happened but the action was conditionally skipped
+- State variables (counters, flags, accumulators) added for a feature lifecycle — verify they reset on deactivation/reactivation, not just on success
 
 #### Magic Numbers & String Coupling
 - Bare numeric literals used in multiple files — should be named constants
@@ -70,6 +75,7 @@ Be terse. For each issue: one line describing the problem, one line with the fix
 - Unused imports or unreachable code paths
 - Comments/docstrings that describe old behavior after the code changed
 - Version mismatch between PR and VERSION/CHANGELOG files
+- Mechanical refactors claiming "all X converted" — grep the full file for the old pattern to verify completeness
 
 #### LLM Prompt Issues
 - 0-indexed lists in prompts (LLMs reliably return 1-indexed)
@@ -81,6 +87,7 @@ Be terse. For each issue: one line describing the problem, one line with the fix
 - Assertions on string content without checking format (e.g., asserting title present but not URL format)
 - Missing assertions that a code path should explicitly NOT call an external service
 - Security enforcement features (blocking, rate limiting, auth) without integration tests verifying enforcement
+- Changed function return type or error contract (e.g., `Ok(None)` → `Err`) — verify at least one test exercises the new error/failure path
 
 #### Error Handling
 - Missing error handling at system boundaries (API routes, background jobs, external service calls)
@@ -103,6 +110,34 @@ Be terse. For each issue: one line describing the problem, one line with the fix
 #### Type Coercion at Boundaries
 - Values crossing language/serialization boundaries where type could change (numeric vs string)
 - Hash/digest inputs that don't normalize types before serialization — different types produce different hashes
+
+---
+
+## Signal-Gated Passes
+
+These passes only run when a cheap grep against the diff detects the corresponding signal. Skip silently if no signal fires.
+
+### Versioned-struct pass
+
+**Signal (run this pass only if the diff matches any of these):**
+- Rust: `const\s+\w*_VERSION\b`, or a struct field declared `\s+version\s*:\s*(u\d+|i\d+)\b`
+- TypeScript: `\bversion\s*:\s*number\b` on a type used in serialize/deserialize paths
+
+**When the signal fires, check every versioned struct in the diff for:**
+
+- **Version check on deserialize/hydrate:** does the deserialize path read `version` and branch? A missing check means a future-version payload silently loads with today's code.
+- **Degraded fallback for version mismatch:** on mismatch, does the code emit a degraded event, fall back to a safe default, or refuse to hydrate? Crashing is acceptable; silently ignoring is not.
+- **Serialize/deserialize symmetry:** every field on the struct must be populated in *both* directions. If a field is written but never read (or vice versa), flag it — this was the PR #173 `hydrated_from_storage` class of bug.
+- **Capped arrays truncated post-deserialize:** if the struct has a `Vec<T>` or `Array` with a declared cap (e.g. `const MAX_X: usize = 100`), the deserialize path must `.truncate(cap)` after reading — stored payloads from earlier versions may exceed the cap.
+
+**Output format:**
+```
+Versioned-Struct Pass: N issues
+- [file:line] <StructName>.version — <specific gap>
+  Fix: <concrete fix referencing the four checks>
+```
+
+If no issues, emit `Versioned-Struct Pass: clean`.
 
 ---
 
