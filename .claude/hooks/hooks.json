@@ -37,6 +37,10 @@
           {
             "type": "command",
             "command": "[ -d .git ] && git add ':(glob)wiki/**/*.md' ':(glob)wiki/**/*.canvas' ':(glob)wiki/**/*.base' ':(glob).raw/**/*' ':(glob)journal/**/*.md' ':(glob)inbox/**/*.md' ':(glob)reminders/**/*.md' ':(glob)_attachments/**/*' 2>/dev/null; (git diff --cached --quiet || git commit -m \"wiki: auto-commit $(date '+%Y-%m-%d %H:%M')\" 2>/dev/null) || true"
+          },
+          {
+            "type": "command",
+            "command": "command -v qmd >/dev/null && { mkdir -p .claude/logs; (qmd update >> .claude/logs/qmd-hook.log 2>&1 &) } || true"
           }
         ]
       }

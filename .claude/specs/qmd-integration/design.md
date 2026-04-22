@@ -37,7 +37,7 @@
 
 | # | Decision | Choice | Rationale |
 |---|----------|--------|-----------|
-| 1 | Collections | wiki + journal + inbox + .raw/articles | Covers all searchable content. Reminders too small, _attachments binary. |
+| 1 | Collections | wiki + journal + inbox + reminders + .raw/articles | Covers all searchable content. _attachments binary. (Revised 2026-04-21: reminders was initially excluded as "too small" but `/superhuman`'s contract explicitly includes reminders — grep fallback covered this, QMD path did not. Added as 5th collection to prevent silent drop when qmd is available. See PR #7.) |
 | 2 | Integration | MCP server + skill rewrites | MCP gives native tools; skill rewrites make /superhuman and /wiki-query semantically aware. |
 | 3 | Reindex trigger | Hook for `update`, batch `embed` at ingest end | FTS5 stays current on every write. Vector embeds batch at natural breakpoints (end of ingest runs). |
 | 4 | Viewer search | QMD HTTP server | Full hybrid search in browser. Requires QMD server running alongside dev server. |

@@ -1,7 +1,7 @@
 ---
 name: wiki-query
 description: "Answer questions using the Obsidian wiki vault. Reads hot cache first, then index, then relevant pages. Synthesizes answers with citations. Files good answers back as wiki pages. Supports quick, standard, and deep modes. Triggers on: what do you know about, query:, what is, explain, summarize, find in wiki, search the wiki, based on the wiki, wiki query quick, wiki query deep."
-allowed-tools: Read Glob Grep
+allowed-tools: Read Glob Grep Bash
 ---
 
 # wiki-query: Query the Wiki
@@ -39,10 +39,15 @@ Do not open individual wiki pages in quick mode.
 
 1. **Read** `wiki/hot.md` first. It may already have the answer or directly relevant context.
 2. **Read** `wiki/index.md` to find the most relevant pages (scan for titles and descriptions).
-3. **Read** those pages. Follow wikilinks to depth-2 for key entities. No deeper.
-4. **Synthesize** the answer in chat. Cite sources with wikilinks: `(Source: [[Page Name]])`.
-5. **Offer to file** the answer: "This analysis seems worth keeping. Should I save it as `wiki/questions/answer-name.md`?"
-6. If the question reveals a **gap**: say "I don't have enough on X. Want to find a source?"
+3. **QMD search** (hybrid BM25 + vector, wiki-scoped):
+   - Availability check: `qmd status 2>/dev/null && echo qmd_available || echo qmd_unavailable`
+   - Collection check: `qmd collection list | grep -q "^wiki "` — if the wiki collection isn't registered, `-c wiki` will exit non-zero and emit no JSON (qmd would otherwise print "Collection not found" to stderr). Treat a failed collection check as **qmd_unavailable** for this query and fall back to grep — do NOT claim the wiki has no coverage based on an empty QMD response.
+   - If `qmd_available` AND wiki collection exists: run `qmd query -c wiki --json -n 10 "<query>"`. The `-c wiki` filter scopes results to the wiki collection only — /wiki-query must not leak journal/inbox/reminders/raw-source hits. Parse results, read the top 3-5 matched pages.
+   - Fallback path: grep across `wiki/` to locate candidate pages, then read 3-5.
+4. **Read** those pages. Follow wikilinks to depth-2 for key entities. No deeper.
+5. **Synthesize** the answer in chat. Cite sources with wikilinks: `(Source: [[Page Name]])`.
+6. **Offer to file** the answer: "This analysis seems worth keeping. Should I save it as `wiki/questions/answer-name.md`?"
+7. If the question reveals a **gap**: say "I don't have enough on X. Want to find a source?"
 
 ---
 
@@ -52,10 +57,11 @@ Use for synthesis questions, comparisons, or "tell me everything about X."
 
 1. Read `wiki/hot.md` and `wiki/index.md`.
 2. Identify all relevant sections (concepts, entities, sources, comparisons).
-3. Read every relevant page. No skipping.
-4. If wiki coverage is thin, offer to supplement with web search.
-5. Synthesize a comprehensive answer with full citations.
-6. Always file the result back as a wiki page. Deep answers are too valuable to lose.
+3. **QMD search** (hybrid BM25 + vector): same availability + wiki-collection check as Standard (a failed `-c wiki` query is treated as qmd_unavailable — never as "zero hits"). If available, run `qmd query -c wiki --json -n 25 "<query>"` for broad recall, wiki-scoped; otherwise fall back to grep across `wiki/`.
+4. Read every relevant page. No skipping.
+5. If wiki coverage is thin, offer to supplement with web search.
+6. Synthesize a comprehensive answer with full citations.
+7. Always file the result back as a wiki page. Deep answers are too valuable to lose.
 
 ---
 
