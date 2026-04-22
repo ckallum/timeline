@@ -1,1 +1,0 @@
-/Users/callumke/Projects/calsuite/scripts/hooks/pr-intent-gate.cjs
