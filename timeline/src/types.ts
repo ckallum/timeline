@@ -24,3 +24,20 @@ export interface TimelineData {
   days: DayEntry[];
   errors?: Array<{ file: string; error: string }>;
 }
+
+export interface Deck {
+  slug: string;
+  title: string;
+  subtitle?: string;
+  source: string;
+  html?: string;
+  pdf?: string;
+  slides?: number;
+  created?: string;
+  updated?: string;
+}
+
+export interface DecksData {
+  generated_at: string;
+  decks: Deck[];
+}
