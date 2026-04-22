@@ -5,6 +5,7 @@ import YearNav from './YearNav';
 import EmptyState from './EmptyState';
 import Spinner from './Spinner';
 import Search from './Search';
+import DecksPicker from './DecksPicker';
 import { useTimelineData } from '../hooks/useTimelineData';
 import type { DayEntry } from '../types';
 import { dayGap, formatMonthYear, getYear } from '../lib/format';
@@ -160,6 +161,7 @@ export default function Timeline() {
   return (
     <div className="relative">
       <Search onNavigate={handleSearchNavigate} />
+      <DecksPicker />
       <YearNav years={years} onJump={handleJumpToYear} collapsed={collapsed} />
 
       {stickyHeader && !collapsed && (

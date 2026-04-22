@@ -18,6 +18,7 @@ wiki/**/*
 timeline/data/
 timeline/dist/
 timeline/node_modules/
+timeline/public/decks/
 
 # local config with potential secrets
 .claude/autoingest.config.json
