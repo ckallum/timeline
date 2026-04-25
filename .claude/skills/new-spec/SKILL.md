@@ -1,5 +1,5 @@
 ---
-_origin: calsuite@df84fae
+_origin: calsuite@f4ec704
 name: new-spec
 description: |
   Scaffold a new spec directory with requirements.md, design.md, and tasks.md

@@ -1,5 +1,5 @@
 ---
-_origin: calsuite@df84fae
+_origin: calsuite@f4ec704
 name: context7
 description: "Look up current, version-specific library documentation using Context7. Use proactively when working with libraries or explicitly via /context7."
 user-invocable: true
