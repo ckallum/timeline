@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/callumke/Projects/timeline/timeline && npm run build 2>&1 | tail -5",
+            "command": "npm --prefix viewer run build 2>&1 | tail -5",
             "async": true,
             "timeout": 30
           }

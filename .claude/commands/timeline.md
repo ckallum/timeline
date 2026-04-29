@@ -6,4 +6,4 @@ Read the `timeline` skill. Then build the data and open the viewer.
 
 Usage:
 - `/timeline` — rebuild data and open in browser
-- For dev mode: `cd timeline && npm run dev`
+- For dev mode: `cd viewer && npm run dev`

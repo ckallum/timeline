@@ -15,10 +15,10 @@ wiki/**/*
 /_attachments/
 
 # build outputs
-timeline/data/
-timeline/dist/
-timeline/node_modules/
-timeline/public/decks/
+viewer/data/
+viewer/dist/
+viewer/node_modules/
+viewer/public/decks/
 
 # local config with potential secrets
 .claude/autoingest.config.json
@@ -35,7 +35,7 @@ timeline/public/decks/
 .obsidian/plugins/obsidian-excalidraw-plugin/main.js
 
 # TypeScript build artifacts
-timeline/tsconfig.tsbuildinfo
+viewer/tsconfig.tsbuildinfo
 
 # standard noise
 .DS_Store

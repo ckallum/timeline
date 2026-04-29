@@ -3,7 +3,7 @@
  * build-timeline-data.ts
  *
  * Walks journal/**\/*.md, parses frontmatter with gray-matter,
- * computes dominant_category, and writes timeline/data/timeline.json.
+ * computes dominant_category, and writes viewer/data/timeline.json.
  *
  * Mtime-based skip: exits immediately if no journal file has been
  * modified since the last build (decision 14).
@@ -16,11 +16,11 @@ import { readFile, writeFile, stat, mkdir } from 'fs/promises';
 import { existsSync, readdirSync } from 'fs';
 import { join, relative, basename, extname } from 'path';
 import matter from 'gray-matter';
-import type { DayEntry, TimelineData, Category, CountKey } from '../timeline/src/types';
+import type { DayEntry, TimelineData, Category, CountKey } from '../viewer/src/types';
 
 const VAULT_ROOT = join(import.meta.dirname, '..');
 const JOURNAL_DIR = join(VAULT_ROOT, 'journal');
-const OUTPUT_DIR = join(VAULT_ROOT, 'timeline', 'data');
+const OUTPUT_DIR = join(VAULT_ROOT, 'viewer', 'data');
 const OUTPUT_FILE = join(OUTPUT_DIR, 'timeline.json');
 const MANIFEST_FILE = join(OUTPUT_DIR, 'timeline.manifest.json');
 const VAULT_NAME = 'timeline';
@@ -82,7 +82,7 @@ function resolveWikilinks(body: string): string {
 }
 
 function resolveImages(body: string): string {
-  const relToVault = relative(join(VAULT_ROOT, 'timeline', 'dist'), VAULT_ROOT);
+  const relToVault = relative(join(VAULT_ROOT, 'viewer', 'dist'), VAULT_ROOT);
   return body.replace(/!\[\[([^\]]+)\]\]/g, (_match, filename: string) => {
     const sanitized = basename(filename);
     const name = basename(sanitized, extname(sanitized));
