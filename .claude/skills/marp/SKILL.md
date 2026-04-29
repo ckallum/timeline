@@ -12,8 +12,8 @@ allowed-tools: Read Write Edit Glob Grep Bash
 
 Turn anything in the vault — a person page, a concept, a project retro, a
 question answer, a day note — into a MARP deck. The skill writes the `.marp.md`
-source into `wiki/decks/`, renders the output into `timeline/public/decks/`
-where Vite serves it over HTTP, and updates `timeline/data/decks.json` so the
+source into `wiki/decks/`, renders the output into `viewer/public/decks/`
+where Vite serves it over HTTP, and updates `viewer/data/decks.json` so the
 timeline viewer's "Decks" picker lists it.
 
 ---
@@ -61,7 +61,7 @@ HTML (default):
 cd /Users/callumke/Projects/timeline
 npx -y -p @marp-team/marp-cli@latest marp \
   wiki/decks/<slug>.marp.md \
-  -o timeline/public/decks/<slug>.html \
+  -o viewer/public/decks/<slug>.html \
   --html
 ```
 
@@ -69,7 +69,7 @@ PDF (when `--pdf` or `--both`):
 ```bash
 npx -y -p @marp-team/marp-cli@latest marp \
   wiki/decks/<slug>.marp.md \
-  -o timeline/public/decks/<slug>.pdf \
+  -o viewer/public/decks/<slug>.pdf \
   --pdf --allow-local-files
 ```
 
@@ -78,7 +78,7 @@ or sandboxed), fall back to `--html` and tell the user the PDF step was
 skipped.
 
 ### 4. Update the decks index
-Append/update an entry in `timeline/data/decks.json`. If the file doesn't
+Append/update an entry in `viewer/data/decks.json`. If the file doesn't
 exist, create it. Schema:
 
 ```json
@@ -160,13 +160,13 @@ for it (dark theme for retros, warmer for journal decks).
 - `marp-cli`'s HTML output uses `--html` to enable inline HTML like `<span
   class="tagline">`. Without it, tags are stripped.
 - PDF rendering requires Chromium; first invocation downloads ~100MB.
-- `timeline/public/decks/*.html` is served by Vite dev at
+- `viewer/public/decks/*.html` is served by Vite dev at
   `http://localhost:5173/decks/<slug>.html`. For production builds, `vite
   build` copies `public/` → `dist/` automatically.
 - The `decks.json` file is NOT consumed by `build-timeline-data.ts`; it's a
   parallel artifact read directly by the viewer's Decks picker.
-- Don't commit deck artefacts: `wiki/decks/`, `timeline/public/decks/`, and
-  `timeline/data/decks.json` are all gitignored by the standard vault rules.
+- Don't commit deck artefacts: `wiki/decks/`, `viewer/public/decks/`, and
+  `viewer/data/decks.json` are all gitignored by the standard vault rules.
 
 ---
 

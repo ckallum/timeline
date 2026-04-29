@@ -74,5 +74,5 @@ else
   echo "qmd not installed; viewer search will be unavailable. Run scripts/setup-qmd.sh to enable."
 fi
 
-cd timeline
+cd viewer
 npx vite
