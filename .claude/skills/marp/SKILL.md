@@ -56,9 +56,10 @@ Use the frontmatter template below.
 
 ### 3. Render
 
+Run these from the repo root (paths are relative to it).
+
 HTML (default):
 ```bash
-cd /Users/callumke/Projects/timeline
 npx -y -p @marp-team/marp-cli@latest marp \
   wiki/decks/<slug>.marp.md \
   -o viewer/public/decks/<slug>.html \
@@ -107,8 +108,9 @@ add `pdf` field if just-rendered). Otherwise prepend the new entry.
 One sentence: what was written, what was rendered, how to view it.
 - Source file path
 - Rendered HTML/PDF paths
-- Hint: "Open the timeline viewer (`/timeline`) and click the Decks button, or
-  open `http://localhost:5173/decks/<slug>.html` directly."
+- Hint: "Run the `/timeline` slash command and click the Decks button, or open
+  `http://localhost:5173/` and click Decks, or jump straight to
+  `http://localhost:5173/decks/<slug>.html`."
 
 ---
 
