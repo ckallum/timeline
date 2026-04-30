@@ -1,5 +1,5 @@
 ---
-_origin: calsuite@eb4661a
+_origin: calsuite@73b2e03
 name: lint-rule-gen
 version: 1.0.0
 description: |

@@ -1,5 +1,5 @@
 ---
-_origin: calsuite@eb4661a
+_origin: calsuite@73b2e03
 name: session-start
 description: Load full project context — reads all .md files, specs, changelog, and git history to produce a prioritized project briefing
 user-invocable: true
