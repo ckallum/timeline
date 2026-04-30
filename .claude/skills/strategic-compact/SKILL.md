@@ -1,5 +1,5 @@
 ---
-_origin: calsuite@eb4661a
+_origin: calsuite@73b2e03
 name: strategic-compact
 description: Hook-driven strategic compaction system. Tracks tool call count and suggests /compact at logical intervals (50 calls, then every 25) to preserve context through phase transitions.
 user-invocable: false
