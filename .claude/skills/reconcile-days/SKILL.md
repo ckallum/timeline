@@ -122,8 +122,8 @@ For each date in the resolved range:
    ```
    Verify the script exists before running. Do not start the dev server.
 
-10. **Append a single entry to `wiki/log.md`** at the top:
-    ```
+10. **Prepend new reconcile entry to top of `wiki/log.md` without editing existing entries**:
+    ```md
     ## [YYYY-MM-DD] reconcile | Day-node reconciliation, range YYYY-MM-DD → YYYY-MM-DD
     - Days touched: [list]
     - Days created: [count]
@@ -162,7 +162,7 @@ When in doubt, prefer false-negative (treat as gap, append) over false-positive 
 ## Constraints
 
 - Use Edit, never Write, on existing day nodes. Append-only.
-- Do not edit past entries in `wiki/log.md`. Append-only at the top.
+- Prepend new entries to the top of `wiki/log.md`; do not edit past entries.
 - Do not start the timeline web viewer. Only regenerate `timeline.json`.
 - Do not auto-promote quicknotes. Just record their existence.
 - Do not commit anything. Leave the working tree dirty for review.
