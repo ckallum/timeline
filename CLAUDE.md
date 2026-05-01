@@ -20,6 +20,7 @@ Open this directory directly in Obsidian to use it as a vault. Open it in Claude
 - `/quicknote` — capture a fragment
 - `/reminder` — set a reminder
 - `/autoingest` — run the ingest loop (kick off recurring runs with `/loop 24h /autoingest`)
+- `/reconcile-days` — back-fill day-node gaps for a date range; complementary to `/autoingest` (forward) by filling backward. Weekly safety pass via `/loop 7d /reconcile-days --last=7d`
 - `/promote` — turn a quicknote into a wiki page
 - `/timeline` — open the web viewer
 - `/day [date] [--brief]` — view a specific day node; `--brief` produces an analyst diarization instead of raw content
