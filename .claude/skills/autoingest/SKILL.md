@@ -110,3 +110,18 @@ Autoingest complete:
 ```
 
 If no new items: "0 new items across N enabled sources."
+
+## Composes with /reconcile-days
+
+/autoingest is forward-only: it pulls today's external sources and rolls them
+into today's day node. It does **not** back-fill past day nodes whose Wiki
+Activity or counts have drifted from reality (typically because pages were
+created mid-conversation rather than via raw-source ingest).
+
+For that, use `/reconcile-days`. Typical chain:
+
+1. `/autoingest` — pull pending external sources into today
+2. `/reconcile-days --last=7d` — back-fill any past day-node gaps
+
+A weekly safety pass via `/loop 7d /reconcile-days --last=7d` catches drift the
+daily autoingest cannot see.
