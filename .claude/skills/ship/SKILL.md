@@ -1,5 +1,5 @@
 ---
-_origin: calsuite@73b2e03
+_origin: calsuite@908e519
 name: ship
 version: 1.0.0
 description: |
@@ -59,6 +59,22 @@ EOF
 ```
 
 Use `docs:` for documentation, `chore:` for config/skills, `style:` for formatting. If there are already commits on the branch and no uncommitted changes, skip this step.
+
+### Step 2.5: Sweep and fix PR-introduced bugs inline
+
+Even in pr-only mode, scan the conversation for **bugs in code this branch is changing**. PR-only mode skips tests, review, and simplification — but it must NOT skip the rule that bugs introduced by the PR get fixed in the PR.
+
+```bash
+git diff origin/main --name-only > /tmp/ship-changed-files.txt
+```
+
+Hold the contents as `CHANGED_FILES`. Review the conversation for any minor bugs, TODOs, edge cases, or rough edges that surfaced during the work. For each candidate, check whether it touches `CHANGED_FILES`:
+
+- **If yes and it's a bug:** fix it now, stage, commit (`git commit -m "fix: <what>"`). No exceptions.
+- **If yes and it's an enhancement/cleanup:** default to fixing inline unless it would meaningfully grow the PR.
+- **If no:** defer to Step 4 (the post-PR `/sweep-issues` call will create the issue).
+
+Skip this step silently if no candidates surfaced.
 
 ### Step 3: Push, run Pre-PR Gates, create PR
 
@@ -258,23 +274,34 @@ git push -u origin $(git branch --show-current)
 
 **Before** running Pre-PR Gates, scan the conversation for deferred items, fast-follows, minor bugs, enhancements, and tech debt — the same categories `/sweep-issues` looks for. Fix anything coherent with the current PR; defer the rest to Step 9.
 
-### 7.2a: Gather candidates
+### 7.2a: Gather candidates and capture the diff file list
 
-Review the conversation for deferred work, TODOs, edge cases, minor bugs, and improvements. For each item, note a one-line description and its source (conversation turn, review finding, etc.).
+First, capture the canonical list of files this branch touches — every later triage decision is grounded against it:
+
+```bash
+git diff origin/main --name-only > /tmp/ship-changed-files.txt
+```
+
+Hold the contents as `CHANGED_FILES`. Then review the conversation for deferred work, TODOs, edge cases, minor bugs, and improvements. For each item, note a one-line description, its source (conversation turn, review finding, etc.), and **the file(s) it relates to** if known.
 
 ### 7.2b: Triage — fix now vs. create issue
+
+For each candidate, first check whether it touches `CHANGED_FILES`. **If it does, default to "fix now"** — the reviewer is going to see those files anyway, and any bug, TODO, or rough edge in them belongs in the same PR. Only override the default if the user explicitly confirms the issue is pre-existing and out of scope.
 
 Classify each candidate:
 
 | Fix now (inline) | Create issue (later) |
 |---|---|
-| Minor bug in code touched by this PR | Feature request unrelated to this PR |
-| Missing edge case in a function this PR added/modified | Large refactor spanning multiple files not in this diff |
-| TODO/FIXME left in files changed by this PR | Work that requires design discussion |
-| Small enhancement coherent with the PR's purpose | Performance optimization with unclear scope |
-| Cleanup in files already being modified | Anything that would change the PR's scope significantly |
+| **Anything touching a file in `CHANGED_FILES`** (default) | Feature request unrelated to this PR |
+| Minor bug in code touched by this PR | Large refactor spanning multiple files not in this diff |
+| Missing edge case in a function this PR added/modified | Work that requires design discussion |
+| TODO/FIXME left in files changed by this PR | Performance optimization with unclear scope |
+| Small enhancement coherent with the PR's purpose | Anything that would change the PR's scope significantly |
+| Cleanup in files already being modified | Pre-existing bug in a file this PR doesn't touch |
 
-**The test:** "Would a reviewer expect this to be part of this PR?" If yes → fix now. If no → create issue.
+**The test:** "Would a reviewer expect this to be part of this PR?" If the candidate's file is in `CHANGED_FILES`, the answer is almost always yes — fix now. If no → create issue.
+
+**Bugs introduced by this PR are never deferrable.** If a candidate is a bug AND its file is in `CHANGED_FILES`, fix it inline. Do not move it to the "create issue" column even if the user requested deferring something else.
 
 ### 7.2c: Apply inline fixes
 
@@ -538,7 +565,7 @@ args: ""
 - **Simplify runs BEFORE review** so the review stamp covers the final code state. Don't reorder Steps 4 and 4.5.
 - **`git push` may fail if the branch was force-pushed elsewhere.** Never force push to recover — ask the user.
 - **CHANGELOG auto-generation reads all commits on the branch** — if prior commits have bad messages, the CHANGELOG entries will be vague.
-- **`/ship pr` skips ALL safety checks** (tests, review, simplification). Only use for genuinely low-risk changes. If in doubt, use `/ship`.
+- **`/ship pr` skips the heavy safety checks** (full test suite, simplification, Pre-Landing Review, CHANGELOG generation, commit splitting) but still runs the cheap ones: the Step 2.5 PR-introduced-bug sweep, the Pre-PR Gates from Step 7.4 (PR-size, test-presence, spec-contract), and the PR-claim-vs-diff grep (Step 8.5). Use for genuinely low-risk changes (docs, config, skills); if in doubt, use `/ship`.
 - **Pre-PR Gates (Step 7.4) warn but do not block** unless `.claude/ship-config.json` sets `strict: true`. They surface context about the diff shape — large PRs, no-test diffs, spec deviations — but the user always has the final word.
 - **`.claude/ship-config.json` is optional and per-repo.** Keys: `criticalPaths: [glob, ...]` for strict test-presence on sensitive files, `strict: true` to promote the strict warning into a block. Only the test-presence gate reads this file — size, spec-contract, and claim-grep gates run unconditionally.
 - **PR-claim-vs-diff grep (Step 8.5) uses literal string search.** A claim is missing if `grep -F` doesn't find it in the full diff. If the code renamed a symbol that the PR body still references, the grep correctly flags it.
