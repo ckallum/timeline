@@ -40,7 +40,7 @@ A single-page checklist for triaging a prompt. Use when the user wants a quick p
 
 ## Reasoning
 
-- [ ] For multi-step tasks: `<thinking>` / `<answer>` structure or adaptive thinking guidance?
+- [ ] For multi-step tasks: explicit reasoning structure in the prompt (`<thinking>` / `<answer>` tags, stepwise markers)?
 - [ ] Self-check pass at the end (`Before finishing, verify…`)?
 
 ## Over-emphasis (high-yield check on older prompts)
