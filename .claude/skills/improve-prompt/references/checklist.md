@@ -1,5 +1,5 @@
 ---
-_origin: calsuite@73a2630
+_origin: calsuite@dfaf5b4
 ---
 
 # Audit checklist — fast pass
@@ -40,7 +40,7 @@ A single-page checklist for triaging a prompt. Use when the user wants a quick p
 
 ## Reasoning
 
-- [ ] For multi-step tasks: explicit reasoning structure in the prompt (`<thinking>` / `<answer>` tags, stepwise markers)?
+- [ ] For multi-step tasks: `<thinking>` / `<answer>` structure or adaptive thinking guidance?
 - [ ] Self-check pass at the end (`Before finishing, verify…`)?
 
 ## Over-emphasis (high-yield check on older prompts)
